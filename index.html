@@ -60,18 +60,6 @@
             display: none; /* Oculto por defecto */
         }
 
-        /* Botón de reinicio */
-        .reset-btn { 
-            margin-top: 30px; 
-            background-color: #e74c3c; 
-            color: white; 
-            border: none; 
-            padding: 10px 15px; 
-            border-radius: 5px; 
-            cursor: pointer; 
-            font-weight: bold;
-        }
-        .reset-btn:hover { background-color: #c0392b; }
     </style>
 </head>
 <body>
@@ -88,11 +76,8 @@
         <a href="Test_44.2_v3.html" class="test-link" data-id="test-IoT">
             <span>Test 44.2: IoT e Industria 4.0</span>
             <span class="score-badge"></span>
-        </a>
-                
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
-        
-        <button class="reset-btn" onclick="resetIndex()">Borrar historial de notas</button>
+        </a>     
+       
     </div>
 
     <script>
@@ -124,16 +109,6 @@
             });
         });
 
-        // Función para limpiar el índice
-        function resetIndex() {
-            if (confirm("¿Seguro que quieres borrar el historial de notas? Los botones volverán a ser azules.")) {
-                const links = document.querySelectorAll('.test-link');
-                links.forEach(link => {
-                    localStorage.removeItem('score_' + link.getAttribute('data-id'));
-                });
-                location.reload(); 
-            }
-        }
     </script>
 </body>
 </html>
