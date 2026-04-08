@@ -68,8 +68,8 @@
 
     <header id="header" class="hidden">
         <div class="stats">
-            <span id="stat-correct">Acertadas: 0</span>
-            <span id="stat-wrong">Falladas: 0</span>
+            <span id="stat-correct">Acertadas: <span style="color: #2ecc71;">0</span></span>
+            <span id="stat-wrong">Falladas: <span style="color: #e74c3c;">0</span></span>
             <span id="stat-blank">En blanco: 0</span>
             <span id="stat-score">Nota: 0.00</span>
             <span id="stat-pending">Pendientes: 5</span>
@@ -364,12 +364,18 @@
             }
             score = Math.max(0, score);
 
-            document.getElementById('stat-correct').innerText = `Acertadas: ${correct}`;
-            document.getElementById('stat-wrong').innerText = `Falladas: ${wrong}`;
+            // Colores dinámicos
+            const notaColor = score >= 30 ? '#2ecc71' : '#e74c3c';
+            const timerColor = state.timeRemaining < 300 ? '#e74c3c' : '#f39c12';
+
+            document.getElementById('stat-correct').innerHTML = `Acertadas: <span style="color: #2ecc71;">${correct}</span>`;
+            document.getElementById('stat-wrong').innerHTML = `Falladas: <span style="color: #e74c3c;">${wrong}</span>`;
             document.getElementById('stat-blank').innerText = `En blanco: ${blank}`;
-            document.getElementById('stat-score').innerText = `Nota: ${score.toFixed(2)}`;
+            document.getElementById('stat-score').innerHTML = `Nota: <span style="color: ${notaColor};">${score.toFixed(2)}</span>`;
             document.getElementById('stat-pending').innerText = `Pendientes: ${pending}`;
-            document.getElementById('stat-timer').innerText = `⏱ ${formatTime(state.timeRemaining)}`;
+            
+            // Icono en naranja (o rojo), texto normal
+            document.getElementById('stat-timer').innerHTML = `<span style="color: ${timerColor};">⏱</span> ${formatTime(state.timeRemaining)}`;
 
             return { correct, wrong, blank, score };
         }
