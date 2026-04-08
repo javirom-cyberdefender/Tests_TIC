@@ -506,6 +506,7 @@
 
         function showFinalModal() {
             const stats = updateHeader();
+            localStorage.setItem('score_test-IoT', stats.score.toFixed(2));
             const modal = document.getElementById('modal-end');
             const statusEl = document.getElementById('final-status');
             const scoreEl = document.getElementById('final-score');
@@ -528,7 +529,7 @@
         function resetTest() {
             if (confirm("¿Seguro que quieres reiniciar? Se perderá todo el progreso.")) {
                 localStorage.removeItem(CACHE_KEY);
-                
+                localStorage.removeItem('score_test-IoT');
                 state = {
                     answers: {}, 
                     timeRemaining: questionsData.length * 60,
