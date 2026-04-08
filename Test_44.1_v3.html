@@ -6,20 +6,26 @@
     <title>Test Interactivo - Industria 4.0</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; color: #333; }
-        /* Cabecera fija */
-        header { position: fixed; top: 0; width: 100%; background-color: #2c3e50; color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
+        
+        /* Cabecera dinámica (Sticky soluciona el solapamiento de la primera pregunta) */
+        header { position: sticky; top: 0; width: 100%; background-color: #2c3e50; color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
+        
         .stats { display: flex; gap: 15px; font-size: 14px; font-weight: bold; flex-wrap: wrap;}
         .stats span { background: #34495e; padding: 5px 10px; border-radius: 5px; }
         
         .controls { display: flex; align-items: center; }
         #stat-timer { background: #34495e; padding: 5px 10px; border-radius: 5px; margin-right: 10px; font-size: 14px; font-weight: bold; }
-        .controls button { background-color: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-left: 10px; font-weight: bold;}
+        .controls button { background-color: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-left: 10px; font-weight: bold; transition: background-color 0.2s;}
+        
+        /* Colores específicos para botones */
         .controls button:hover { background-color: #c0392b; }
         .controls button.btn-pause { background-color: #f39c12; }
         .controls button.btn-pause:hover { background-color: #d68910; }
+        .controls button.btn-menu { background-color: #27ae60; }
+        .controls button.btn-menu:hover { background-color: #219653; }
         
         /* Contenedor principal */
-        #main-container { margin-top: 100px; padding: 20px; max-width: 800px; margin-left: auto; margin-right: auto; padding-bottom: 50px;}
+        #main-container { padding: 20px; max-width: 800px; margin: 20px auto 50px auto; transition: opacity 0.3s;}
         
         /* Preguntas */
         .question-card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -38,11 +44,23 @@
 
         /* Modales */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2000; }
-        .modal-content { background: white; padding: 30px; border-radius: 8px; max-width: 500px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .modal-content { background: white; padding: 30px; border-radius: 8px; max-width: 500px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin: 0 15px;}
         .modal-content h2 { margin-top: 0; }
         .modal-content button { background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; font-weight: bold;}
         .modal-content button:hover { background-color: #2980b9; }
         .hidden { display: none !important; }
+
+        /* ========= DISEÑO RESPONSIVE PARA MÓVILES ========= */
+        @media (max-width: 768px) {
+            header { flex-direction: column; padding: 10px; }
+            /* Estadísticas en cuadrícula (2 columnas) */
+            .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 100%; }
+            .stats span { font-size: 12px; padding: 6px; text-align: center; margin: 0; }
+            /* Botones en cuadrícula (2 columnas) */
+            .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 100%; margin-top: 8px; }
+            #stat-timer { grid-column: span 2; text-align: center; margin: 0; padding: 8px;}
+            .controls button { margin: 0; width: 100%; font-size: 13px; padding: 10px 5px;}
+        }
     </style>
 </head>
 <body>
@@ -57,8 +75,9 @@
         </div>
         <div class="controls">
             <span id="stat-timer">⏱ 05:00</span>
+            <button class="btn-menu" onclick="window.location.href='index.html'">Menú de Tests</button>
             <button id="btn-pause" class="btn-pause" onclick="togglePause()">Pausar</button>
-            <button id="btn-finish" onclick="finishTest()">Finalizar Intento</button>
+            <button id="btn-finish" onclick="finishTest()">Finalizar</button>
             <button onclick="resetTest()">Reiniciar</button>
         </div>
     </header>
@@ -68,8 +87,8 @@
     <div id="modal-start" class="modal-overlay">
         <div class="modal-content">
             <h2>Test de Industria 4.0</h2>
-            <p>El cuestionario consta de 5 preguntas.</p>
-            <p>Tienes un tiempo límite de <strong>5 minutos</strong> para completarlo.</p>
+            <p>El cuestionario consta de <strong id="start-q-count">5</strong> preguntas.</p>
+            <p>Tienes un tiempo límite de <strong id="start-time-limit">5</strong> minutos para completarlo.</p>
             <button onclick="startTest()">INICIAR TEST</button>
         </div>
     </div>
@@ -81,6 +100,7 @@
             <p id="final-stats"></p>
             <button onclick="resetTest()">Reiniciar Test</button>
             <button onclick="reviewAnswers()" style="background-color: #8e44ad;">Revisar Respuestas</button>
+            <button onclick="window.location.href='index.html'" style="background-color: #27ae60;">Volver al Menú</button>
         </div>
     </div>
 
@@ -160,6 +180,11 @@
 
         // Inicialización y Caché
         function init() {
+            // Actualizar textos dinámicos del inicio
+            const totalQ = questionsData.length;
+            document.getElementById('start-q-count').innerText = totalQ;
+            document.getElementById('start-time-limit').innerText = totalQ;
+
             const savedState = localStorage.getItem('quizState_v1');
             if (savedState) {
                 state = JSON.parse(savedState);
@@ -169,7 +194,20 @@
                     document.getElementById('modal-start').classList.add('hidden');
                     document.getElementById('header').classList.remove('hidden');
                     document.getElementById('main-container').classList.remove('hidden');
-                    if (!state.isPaused) startTimer();
+                    
+                    // Recuperar el estado de pausa visualmente
+                    const btnPause = document.getElementById('btn-pause');
+                    if (state.isPaused) {
+                        btnPause.innerText = "Reanudar";
+                        document.getElementById('main-container').style.opacity = "0.2";
+                        document.getElementById('main-container').style.pointerEvents = "none";
+                    } else {
+                        btnPause.innerText = "Pausar";
+                        document.getElementById('main-container').style.opacity = "1";
+                        document.getElementById('main-container').style.pointerEvents = "auto";
+                        startTimer();
+                    }
+                    
                     updateHeader();
                     renderQuiz();
                 }
@@ -200,14 +238,17 @@
         function togglePause() {
             state.isPaused = !state.isPaused;
             const btn = document.getElementById('btn-pause');
+            
             if (state.isPaused) {
                 btn.innerText = "Reanudar";
                 document.getElementById('main-container').style.opacity = "0.2";
                 document.getElementById('main-container').style.pointerEvents = "none";
+                clearInterval(timerInterval); // Asegurarnos de parar el reloj
             } else {
                 btn.innerText = "Pausar";
                 document.getElementById('main-container').style.opacity = "1";
                 document.getElementById('main-container').style.pointerEvents = "auto";
+                startTimer(); // Volver a iniciar
             }
             saveState();
         }
@@ -244,7 +285,7 @@
                 });
             }
 
-            questionsToRender.forEach((q, displayIndex) => {
+            questionsToRender.forEach((q) => {
                 const isAnswered = state.answers[q.id] !== undefined;
                 const selectedOption = state.answers[q.id];
                 const isBlank = selectedOption === 4;
@@ -287,7 +328,6 @@
             
             state.answers[questionId] = optionIndex;
             
-            // Actualizar la última pregunta contestada basándonos en el orden (ID 1 a 5)
             if (questionId > state.highestQuestionAnswered) {
                 state.highestQuestionAnswered = questionId;
             }
@@ -296,13 +336,11 @@
             updateHeader();
             renderQuiz();
 
-            // Si se contestaron todas, terminar
             if (Object.keys(state.answers).length === questionsData.length) {
                 setTimeout(finishTest, 1000);
             }
         }
 
-        // Cálculos y Estado Final
         function updateHeader() {
             let correct = 0, wrong = 0, blank = 0;
             const total = questionsData.length;
@@ -322,12 +360,11 @@
 
             const pending = total - answeredCount;
             
-            // Formula: (acertadas - falladas/3) / (numero de la ultima pregunta contestada) x 100
             let score = 0;
             if (state.highestQuestionAnswered > 0) {
                 score = ((correct - (wrong / 3)) / state.highestQuestionAnswered) * 100;
             }
-            score = Math.max(0, score); // Evitar notas negativas
+            score = Math.max(0, score);
 
             document.getElementById('stat-correct').innerText = `Acertadas: ${correct}`;
             document.getElementById('stat-wrong').innerText = `Falladas: ${wrong}`;
@@ -343,11 +380,9 @@
             state.isFinished = true;
             clearInterval(timerInterval);
             
-            // Marcar las pendientes como en blanco si se acaba el tiempo o se finaliza
             questionsData.forEach(q => {
                 if (state.answers[q.id] === undefined) {
-                    state.answers[q.id] = 4; // 4 es el índice de "Dejar en blanco"
-                    // Aseguramos que cuente como respondida para la fórmula de la nota
+                    state.answers[q.id] = 4;
                     if (q.id > state.highestQuestionAnswered) {
                         state.highestQuestionAnswered = q.id;
                     }
@@ -366,7 +401,6 @@
             
             modal.classList.remove('hidden');
             
-            // Asumiendo que se aprueba con un 50 sobre 100
             if (stats.score >= 50) {
                 statusEl.innerText = "¡APROBADO!";
                 statusEl.style.color = "#27ae60";
@@ -382,8 +416,36 @@
 
         function resetTest() {
             if (confirm("¿Seguro que quieres reiniciar? Se perderá todo el progreso.")) {
+                // Borrar caché
                 localStorage.removeItem('quizState_v1');
-                location.reload();
+                
+                // Resetear estado en memoria (Mucho más fiable que reload())
+                state = {
+                    answers: {}, 
+                    timeRemaining: questionsData.length * 60,
+                    isFinished: false,
+                    isPaused: false,
+                    highestQuestionAnswered: 0
+                };
+                
+                if (timerInterval) clearInterval(timerInterval);
+                
+                // Restaurar visibilidad original de Modales y Cabecera
+                document.getElementById('modal-end').classList.add('hidden');
+                document.getElementById('header').classList.add('hidden');
+                document.getElementById('main-container').classList.add('hidden');
+                document.getElementById('modal-start').classList.remove('hidden');
+                
+                // Restaurar UI de pausa y revisión si habían sido modificados
+                document.getElementById('btn-pause').innerText = "Pausar";
+                document.getElementById('main-container').style.opacity = "1";
+                document.getElementById('main-container').style.pointerEvents = "auto";
+                document.getElementById('btn-pause').style.display = 'inline-block';
+                document.getElementById('btn-finish').style.display = 'inline-block';
+                
+                // Forzar repintado visual y reinicio de la cabecera
+                updateHeader();
+                renderQuiz();
             }
         }
 
@@ -391,14 +453,11 @@
             document.getElementById('modal-end').classList.add('hidden');
             document.getElementById('header').classList.remove('hidden');
             
-            // Asegurar que los controles sigan visibles en modo revisión
-            document.querySelector('.controls').style.display = 'flex';
+            document.querySelector('.controls').style.display = 'grid'; // Mantener formato grid en móvil
             
-            // Ocultamos los botones que ya no tienen sentido al terminar (Pausar y Finalizar)
             document.getElementById('btn-pause').style.display = 'none';
             document.getElementById('btn-finish').style.display = 'none';
             
-            // El temporizador y el botón Reiniciar seguirán viéndose perfectamente
             renderQuiz(true);
         }
 
