@@ -30,14 +30,16 @@
 
         /* Estilo base de los botones/enlaces */
         .test-link { 
-            display: block; 
-            background-color: #3498db; /* Azul por defecto */
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+            background-color: #3498db; 
             color: white; 
             padding: 15px 20px; 
             margin-bottom: 15px; 
             text-decoration: none; 
             border-radius: 5px; 
-            font-size: 18px;
+            font-size: 16px; /* Letra un poco más pequeña para que quepa bien la nota */
             font-weight: bold; 
             transition: background-color 0.3s; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -46,11 +48,17 @@
         .test-link:hover { background-color: #2980b9; }
 
         /* Estilo cuando el test ya ha sido visitado */
-        .test-link.visited { 
-            background-color: #555555; /* Gris oscuro */
-        }
-        
+        .test-link.visited { background-color: #555555; }
         .test-link.visited:hover { background-color: #333333; }
+
+        /* Globito de la nota */
+        .score-badge {
+            background-color: rgba(255,255,255,0.2);
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            display: none; /* Oculto por defecto */
+        }
 
         /* Botón de reinicio */
         .reset-btn { 
@@ -70,53 +78,60 @@
 
     <div class="index-container">
         <h1>CUESTIONARIOS TIC A2</h1>
-        <p class="subtitle">Selecciona un test para comenzar. Los tests ya realizados se marcarán en gris.</p>
+        <p class="subtitle">Selecciona un test para comenzar. Tu última nota aparecerá a la derecha.</p>
 
-        <a href="Test_44.1_v3.html" class="test-link" data-id="test-industria">Test 44.1: IoT e Industria 4.0</a>
-        <a href="Test_44.2_v3.html" class="test-link" data-id="test-IoT">Test 44.2: IoT e Industria 4.0</a>
+        <a href="Test_44.1_v3.html" class="test-link" data-id="test-industria">
+            <span>Test 44.1: IoT e Industria 4.0</span>
+            <span class="score-badge"></span>
+        </a>
+
+        <a href="Test_44.2_v3.html" class="test-link" data-id="test-IoT">
+            <span>Test 44.2: IoT e Industria 4.0</span>
+            <span class="score-badge"></span>
+        </a>
                 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
         
-        <button class="reset-btn" onclick="resetIndex()">Borrar historial de tests vistos</button>
+        <button class="reset-btn" onclick="resetIndex()">Borrar historial de notas</button>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. Obtener todos los botones de la página
             const testLinks = document.querySelectorAll('.test-link');
             
-            // 2. Cargar el historial desde el localStorage
-            // Si no hay historial previo, creamos un array vacío []
-            let visitedTests = JSON.parse(localStorage.getItem('indexHistory_v1')) || [];
-            
-            // 3. Revisar cada botón al cargar la página
             testLinks.forEach(link => {
                 const testId = link.getAttribute('data-id');
+                const badge = link.querySelector('.score-badge');
                 
-                // Si el ID del test está guardado en nuestro historial, le ponemos la clase gris
-                if (visitedTests.includes(testId)) {
+                // Buscamos la nota en la caché.
+                const savedScore = localStorage.getItem('score_' + testId);
+                
+                if (savedScore !== null) {
+                    // Si hay nota, ponemos el botón gris
                     link.classList.add('visited');
-                }
-
-                // 4. Qué hacer cuando se hace clic en un botón
-                link.addEventListener('click', function() {
-                    // Cambiamos el color instantáneamente
-                    this.classList.add('visited');
                     
-                    // Si el test no estaba en el historial, lo añadimos y guardamos
-                    if (!visitedTests.includes(testId)) {
-                        visitedTests.push(testId);
-                        localStorage.setItem('indexHistory_v1', JSON.stringify(visitedTests));
+                    // Mostramos el globo y le ponemos la nota
+                    badge.style.display = 'inline-block';
+                    badge.innerText = savedScore;
+                    
+                    // Coloreamos el globo según si está aprobado (>= 30) o suspenso (< 30)
+                    if (parseFloat(savedScore) >= 30) {
+                        badge.style.backgroundColor = '#2ecc71'; // Verde
+                    } else {
+                        badge.style.backgroundColor = '#e74c3c'; // Rojo
                     }
-                });
+                }
             });
         });
 
-        // Función extra para limpiar el índice (por si quieres volver a empezar)
+        // Función para limpiar el índice
         function resetIndex() {
-            if (confirm("¿Seguro que quieres borrar el historial de tests realizados? Los botones volverán a ser azules.")) {
-                localStorage.removeItem('indexHistory_v1');
-                location.reload(); // Recarga la página para aplicar los cambios
+            if (confirm("¿Seguro que quieres borrar el historial de notas? Los botones volverán a ser azules.")) {
+                const links = document.querySelectorAll('.test-link');
+                links.forEach(link => {
+                    localStorage.removeItem('score_' + link.getAttribute('data-id'));
+                });
+                location.reload(); 
             }
         }
     </script>
