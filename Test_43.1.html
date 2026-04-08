@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Interactivo - Test 43.1</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; color: #333; }
+        
+        header { position: sticky; top: 0; width: 100%; background-color: #2c3e50; color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
+        
+        .stats { display: flex; gap: 15px; font-size: 14px; font-weight: bold; flex-wrap: wrap; align-items: center;}
+        .stats span { background: #34495e; padding: 5px 10px; border-radius: 5px; }
+        #stat-timer { font-size: 14px; }
+        
+        .controls { display: flex; align-items: center; }
+        .controls button { background-color: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-left: 10px; font-weight: bold; transition: background-color 0.2s;}
+        
+        .controls button:hover { background-color: #c0392b; }
+        .controls button.btn-pause { background-color: #f39c12; }
+        .controls button.btn-pause:hover { background-color: #d68910; }
+        .controls button.btn-menu { background-color: #27ae60; }
+        .controls button.btn-menu:hover { background-color: #219653; }
+        
+        #main-container { padding: 20px; max-width: 800px; margin: 20px auto 50px auto; transition: opacity 0.3s;}
+        
+        .question-card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .question-title { font-weight: bold; margin-bottom: 15px; font-size: 16px;}
+        .option { display: block; padding: 10px 15px; border: 2px solid #ecf0f1; border-radius: 5px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; background: #fafafa;}
+        .option:hover:not(.disabled) { border-color: #bdc3c7; background: #f0f3f4; }
+        .option.disabled { cursor: not-allowed; opacity: 0.7; }
+        .option.correct { background-color: #d4edda; border-color: #28a745; color: #155724; }
+        .option.wrong { background-color: #f8d7da; border-color: #dc3545; color: #721c24; }
+        .option.blank { background-color: #e2e3e5; border-color: #6c757d; color: #383d41; }
+        
+        .feedback { margin-top: 15px; padding: 15px; border-radius: 5px; display: none; font-weight: bold; }
+        .feedback.show { display: block; }
+        .feedback-correct { background-color: #d4edda; color: #155724; border-left: 5px solid #28a745; }
+        .feedback-wrong { background-color: #f8d7da; color: #721c24; border-left: 5px solid #dc3545; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+        .modal-content { background: white; padding: 30px; border-radius: 8px; max-width: 500px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin: 0 15px;}
+        .modal-content h2 { margin-top: 0; }
+        .modal-content button { background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; font-weight: bold;}
+        .modal-content button:hover { background-color: #2980b9; }
+        .hidden { display: none !important; }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; padding: 10px; gap: 8px;}
+            .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; width: 100%; }
+            .stats span { font-size: 11px; padding: 6px 2px; text-align: center; margin: 0; white-space: nowrap;}
+            .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 100%; }
+            .controls button { margin: 0; width: 100%; font-size: 13px; padding: 10px 4px;}
+        }
+    </style>
+</head>
+<body>
+
+    <header id="header" class="hidden">
+        <div class="stats">
+            <span id="stat-correct">Acertadas: <span style="color: #2ecc71;">0</span></span>
+            <span id="stat-wrong">Falladas: <span style="color: #e74c3c;">0</span></span>
+            <span id="stat-blank">En blanco: 0</span>
+            <span id="stat-score">Nota: 0.00</span>
+            <span id="stat-pending">Pendientes: 0</span>
+            <span id="stat-timer">⏱ 00:00</span>
+        </div>
+        <div class="controls">
+            <button id="btn-pause" class="btn-pause" onclick="togglePause()">Pausar</button>
+            <button id="btn-finish" onclick="finishTest()">Finalizar</button>
+            <button onclick="resetTest()">Reiniciar</button>
+            <button class="btn-menu" onclick="window.location.href='index.html'">Menú de Tests</button>
+        </div>
+    </header>
+
+    <div id="main-container" class="hidden"></div>
+
+    <div id="modal-start" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Test 43.1 - Redes y Comunicaciones</h2>
+            <p>El cuestionario consta de <strong id="start-q-count">0</strong> preguntas.</p>
+            <p>Tienes un tiempo límite de <strong id="start-time-limit">0</strong> minutos para completarlo.</p>
+            <button onclick="startTest()">INICIAR TEST</button>
+        </div>
+    </div>
+
+    <div id="modal-end" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 id="final-status">RESULTADO</h2>
+            <h1 id="final-score" style="font-size: 48px; margin: 10px 0;">0.00</h1>
+            <p id="final-stats"></p>
+            <button onclick="resetTest()">Reiniciar Test</button>
+            <button onclick="reviewAnswers()" style="background-color: #8e44ad;">Revisar Respuestas</button>
+            <button onclick="window.location.href='index.html'" style="background-color: #27ae60;">Volver al Menú</button>
+        </div>
+    </div>
+
+    <script>
+        const questionsData = [
+            {
+                id: 1,
+                text: "1) [TICA1 2019] Señale la opción correcta respecto al uso del protocolo Real-time Transport Protocol (RTP) para el intercambio de información multimedia:",
+                options: [
+                    "a) Se debe establecer primero un flujo mediante el protocolo Real Time Control Protocol (RTCP).",
+                    "b) RTP utiliza principalmente TCP como protocolo de transporte.",
+                    "c) Real Time Secure Protocol (RTSP) incorpora autenticación y cifrado.",
+                    "d) RTP es empleado en sesiones multimedia basadas tanto en SIP como en H.323.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 3
+            },
+            {
+                id: 2,
+                text: "2) [TICA1 2019] ¿Cuál de las siguientes es una dirección IPv6 válida?",
+                options: [
+                    "a) 9000::1234::CDEH",
+                    "b) 1222:2234:1145:ABCD:A7A:0:0:7817",
+                    "c) 8000:0:0:0:ABCD:1125",
+                    "d) FE80::0112::1134::B214",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 1
+            },
+            {
+                id: 3,
+                text: "3) [TICA1 2019] ¿Cuál de los siguientes es un protocolo no orientado a conexión?",
+                options: [
+                    "a) TCP.",
+                    "b) ICMP.",
+                    "c) FTP.",
+                    "d) HTTP.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 1
+            },
+            {
+                id: 4,
+                text: "4) [TICA1 2019] Para un datagrama IPv4 con una cabecera de 20 bytes, ¿qué valor tendría el campo 'Longitud de Cabecera'?",
+                options: [
+                    "a) 20.",
+                    "b) 5.",
+                    "c) 160.",
+                    "d) 4.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 1
+            },
+            {
+                id: 5,
+                text: "5) [TICA1 2019] ¿Cuál de los siguientes protocolos se utiliza para obtener la dirección MAC de un nodo a partir de su dirección IP?",
+                options: [
+                    "a) ARP.",
+                    "b) ICMP.",
+                    "c) RARP.",
+                    "d) DNS.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 0
+            },
+            {
+                id: 6,
+                text: "6) [TICA1 2019] ¿Cuál es la principal misión de ICANN en el ecosistema Internet?",
+                options: [
+                    "a) Desarrollar estándares técnicos abiertos.",
+                    "b) Acordar las políticas públicas que afectan a Internet.",
+                    "c) Administrar los servidores raíz del DNS.",
+                    "d) Fijar los parámetros técnicos de los protocolos Internet del IRTF.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 2
+            },
+            {
+                id: 7,
+                text: "7) [TICA1 2019] ¿Cuántos nombres de dominio genéricos de primer nivel pueden existir?",
+                options: [
+                    "a) 7 (.edu, .gov, .com, .mil, .net, .int, .org).",
+                    "b) 201 (siete genéricos, y 194 de los países soberanos reconocidos por la ONU).",
+                    "c) No existe límite para el número de los CCTLD (\"Country Code TLD\"), pero sí para el número de GTLD (\"General TLD\").",
+                    "d) No existe límite de nombres de dominio genéricos de primer nivel.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 3
+            },
+            {
+                id: 8,
+                text: "8) [TICA1 2019 Ex] ¿Cuál de las siguientes opciones es INCORRECTA respecto al protocolo IAX?",
+                options: [
+                    "a) Optimiza el ancho de banda respecto a SIP.",
+                    "b) Evita los problemas de NAT que aparecen en SIP con direcciones privadas.",
+                    "c) IAX utiliza un solo puerto para mandar la información de señalización y los datos de todas sus llamadas.",
+                    "d) Es un protocolo de propósito general y podría transmitir sin dificultad cualquier información y no sólo audio o video.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 3
+            },
+            {
+                id: 9,
+                text: "9) [TICA1 2019 Ex] ¿Cuál es la norma que define el modelo de referencia OSI (Open System Interconnection)?",
+                options: [
+                    "a) ISO/IEC 7498-1.",
+                    "b) IEEE 802.16.",
+                    "c) RFC 2460.",
+                    "d) ISO/IEC 27000.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 0
+            },
+            {
+                id: 10,
+                text: "10) [TICA1 2019 Ex] ¿Cuáles son los puertos relacionados con el tráfico basado en web (HTTP у HTTPS)?",
+                options: [
+                    "a) 21 (HTTP) y 22 (HTTPS).",
+                    "b) 80 (HTTP) y 443 (HTTPS).",
+                    "c) 80 (HTTPS) y 443 (HTTP).",
+                    "d) 21 (HTTPS) y 22 (HTTP).",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 1
+            },
+            {
+                id: 11,
+                text: "11) [TICA1 2019 Ex] ¿Cuál de las siguientes cabeceras de extensión de IPv6 ha de ser examinada por los nodos intermedios de la red y aparece inmediatamente después de la cabecera IPv6?",
+                options: [
+                    "a) Authentication header.",
+                    "b) Fragment header.",
+                    "c) Hop by hop header.",
+                    "d) Routing header.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 2
+            },
+            {
+                id: 12,
+                text: "12) [TICA1 2019 Ex] Señale la opción correcta respecto al protocolo UDP:",
+                options: [
+                    "a) Es un protocolo orientado a la conexión.",
+                    "b) Garantiza la entrega de los bytes al nivel superior en orden.",
+                    "c) Su cabecera tiene un tamaño de 8 bytes.",
+                    "d) El destino envía acuses de recibido o ACKs notificando los paquetes correctamente recibidos.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 2
+            },
+            {
+                id: 13,
+                text: "13) [TICA1 2019 Ex] ¿En cuántas capas se estructura el modelo OSI (Open System Interconnection)?",
+                options: [
+                    "a) 4.",
+                    "b) 6.",
+                    "c) 7.",
+                    "d) 5.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 2
+            },
+            {
+                id: 14,
+                text: "14) [TICA1 2018] NO es un protocolo orientado a conexión:",
+                options: [
+                    "a) SNMP.",
+                    "b) XMPP.",
+                    "c) ATM.",
+                    "d) SMTP.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 0
+            },
+            {
+                id: 15,
+                text: "15) [TICA1 2018] En el servicio DNS es INCORRECTO que:",
+                options: [
+                    "a) Consiste en una base de datos global, distribuida y jerárquica.",
+                    "b) La operación más habitual es encontrar el nombre a partir de la dirección IP.",
+                    "c) Trabaja a nivel de aplicación cliente/servidor sobre TCP o UDP en el puerto 53.",
+                    "d) Cada dominio es servido por uno o varios servidores, conocidos como \"authoritative server\".",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 1
+            },
+            {
+                id: 16,
+                text: "16) [TICA1 2018] La dirección IPv4 150.214.1.12 corresponde con el ordenador (nodo) de una red /23. ¿Cuál es la dirección IP que hay que utilizar para hacer una llamada a todos los nodos de esa red (broadcast)?",
+                options: [
+                    "a) 150.214.1.0",
+                    "b) 150.214.1.255",
+                    "c) 150.214.1.254",
+                    "d) 150.214.1.1",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 1
+            },
+            {
+                id: 17,
+                text: "17) [TICA1 2018 Ex] En el modelo OSI, ¿cuál es la primitiva empleada por el usuario de un servicio en destino para reconocer o completar algún procedimiento previamente iniciado por una indicación del proveedor del servicio?:",
+                options: [
+                    "a) RESPONSE",
+                    "b) INDICATION",
+                    "c) CONFIRM",
+                    "d) REQUEST",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 0
+            },
+            {
+                id: 18,
+                text: "18) [TICA1 2018 Ex] La dirección IPv4 150.214.93.12 corresponde con el ordenador (nodo) de la siguiente red /23:",
+                options: [
+                    "a) 150.214.92.254",
+                    "b) 150.214.93.0",
+                    "c) 150.214.93.255",
+                    "d) 150.214.92.0",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 3
+            },
+            {
+                id: 19,
+                text: "19) [TICA1 2017] Respecto a los protocolos y la información que se muestra a continuación, seleccione la respuesta INCORRECTA:",
+                options: [
+                    "a) ICMP es un protocolo no orientado a conexión de nivel 3 (red).",
+                    "b) POP3 es un protocolo orientado a conexión de nivel 7 (aplicación).",
+                    "c) UDP es un protocolo no orientado a conexión de nivel 4 (transporte).",
+                    "d) IP es un protocolo orientado a conexión de nivel 3 (red).",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 3
+            },
+            {
+                id: 20,
+                text: "20) [TICA1 2016 ANULADA. ¿Cuál de las siguientes afirmaciones sobre IPv6 es FALSA?",
+                options: [
+                    "a) El soporte IPsec es opcional en IPv6.",
+                    "b) Los nodos IPv6 pueden configurarse a sí mismos automáticamente cuando son conectados a una red enrutada en IPv6 usando los mensajes de descubrimiento de routers de ICMPv6.",
+                    "c) IPv6 implementa broadcast.",
+                    "d) Mobile IPv6 (MIPv6) es un protocolo desarrollado para soportar movilidad IP.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 2
+            },
+            {
+                id: 21,
+                text: "21) [TIC A2 2021] ¿Cuál de las siguientes opciones contiene las capas del modelo OSI ordenadas correctamente de la más baja a la más alta?",
+                options: [
+                    "a) Física, Red, Enlace de Datos, Sesión, Transporte, Presentación, Aplicación.",
+                    "b) Física, Enlace de Datos, Red, Transporte, Sesión, Presentación, Aplicación.",
+                    "c) Física, Enlace de Datos, Transporte, Red, Sesión, Presentación, Aplicación.",
+                    "d) Física, Presentación, Transporte, Enlace de Datos, Red, Sesión, Aplicación.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 1
+            },
+            {
+                id: 22,
+                text: "22) [TIC A2 2021] En el protocolo DHCP, el cliente inicia su solicitud de petición de dirección IP a los servidores mediante el envío de un mensaje en modo difusión dentro de su subred. Este mensaje es del tipo:",
+                options: [
+                    "a) DHCPREQUEST",
+                    "b) DHCPDISCOVER",
+                    "c) DHCPOFFER",
+                    "d) DHCPACKNOWLEDGE",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 1
+            },
+            {
+                id: 23,
+                text: "23) [TIC A2 2021] Respecto al protocolo IPv6, señale la afirmación INCORRECTA:",
+                options: [
+                    "a) Gracias al formato de su cabecera, los paquetes IPv6 son más simples que los transmitidos mediante IPv4.",
+                    "b) IPv6 ofrece mayor soporte para extensiones y opciones en la cabecera de los paquetes.",
+                    "c) IPv6 implementa direcciones tipo Unicast, Multicast, Anycast y Broadcast.",
+                    "d) El protocolo IPv6 permite el envío de jumbogramas.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 2
+            },
+            {
+                id: 24,
+                text: "24) [TIC A2 2021] ¿Cuáles son los puertos llamados \"well-known ports\"?",
+                options: [
+                    "a) Los puertos del 0 al 1023.",
+                    "b) Los puertos del 1 al 10.",
+                    "c) Los puertos del 49152 al 65535.",
+                    "d) Los puertos del 1024 al 49151.",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 0
+            },
+            {
+                id: 25,
+                text: "25) [TIC A2 2021] En una red MPLS el elemento que inicia o termina el túnel se denomina:",
+                options: [
+                    "a) LER (Label Edge Router)",
+                    "b) LSR (Label Switching Router)",
+                    "c) LDR (Label Distribution Router)",
+                    "d) LFR (Label Forwarding Router)",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 0
+            },
+            {
+                id: 26,
+                text: "26) [TIC A2 2021] De entre los siguientes, señale cuál NO es un protocolo de enrutamiento:",
+                options: [
+                    "a) OSPF",
+                    "b) NAT",
+                    "c) RIP",
+                    "d) BGP",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 1
+            },
+            {
+                id: 27,
+                text: "27) [TIC A2 2021] En una trama Ethernet, un valor de 0x0806 en el campo EtherType o Tipo, indica que se está encapsulando el protocolo:",
+                options: [
+                    "a) IPv4",
+                    "b) IPv6",
+                    "c) ARP",
+                    "d) 802.1Q (VLAN)",
+                    "e) Dejar en blanco."
+                ],
+                correctIndex: 2
+            }
+        ];
+
+        const CACHE_KEY = 'quizState_43_1';
+
+        let state = {
+            answers: {}, 
+            timeRemaining: questionsData.length * 60,
+            isFinished: false,
+            isPaused: false,
+            highestQuestionAnswered: 0
+        };
+
+        let timerInterval = null;
+
+        function init() {
+            const totalQ = questionsData.length;
+            document.getElementById('start-q-count').innerText = totalQ;
+            document.getElementById('start-time-limit').innerText = totalQ;
+
+            const savedState = localStorage.getItem(CACHE_KEY);
+            if (savedState) {
+                state = JSON.parse(savedState);
+                if (state.isFinished) {
+                    showFinalModal();
+                } else {
+                    document.getElementById('modal-start').classList.add('hidden');
+                    document.getElementById('header').classList.remove('hidden');
+                    document.getElementById('main-container').classList.remove('hidden');
+                    
+                    const btnPause = document.getElementById('btn-pause');
+                    if (state.isPaused) {
+                        btnPause.innerText = "Reanudar";
+                        document.getElementById('main-container').style.opacity = "0.2";
+                        document.getElementById('main-container').style.pointerEvents = "none";
+                    } else {
+                        btnPause.innerText = "Pausar";
+                        document.getElementById('main-container').style.opacity = "1";
+                        document.getElementById('main-container').style.pointerEvents = "auto";
+                        startTimer();
+                    }
+                    
+                    updateHeader();
+                    renderQuiz();
+                }
+            } else {
+                renderQuiz();
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem(CACHE_KEY, JSON.stringify(state));
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!state.isPaused && !state.isFinished) {
+                    state.timeRemaining--;
+                    updateHeader();
+                    saveState();
+                    if (state.timeRemaining <= 0) {
+                        finishTest();
+                    }
+                }
+            }, 1000);
+        }
+
+        function togglePause() {
+            state.isPaused = !state.isPaused;
+            const btn = document.getElementById('btn-pause');
+            
+            if (state.isPaused) {
+                btn.innerText = "Reanudar";
+                document.getElementById('main-container').style.opacity = "0.2";
+                document.getElementById('main-container').style.pointerEvents = "none";
+                clearInterval(timerInterval);
+            } else {
+                btn.innerText = "Pausar";
+                document.getElementById('main-container').style.opacity = "1";
+                document.getElementById('main-container').style.pointerEvents = "auto";
+                startTimer();
+            }
+            saveState();
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function startTest() {
+            document.getElementById('modal-start').classList.add('hidden');
+            document.getElementById('header').classList.remove('hidden');
+            document.getElementById('main-container').classList.remove('hidden');
+            startTimer();
+            updateHeader();
+        }
+
+        function renderQuiz(reviewMode = false) {
+            const container = document.getElementById('main-container');
+            container.innerHTML = '';
+
+            let questionsToRender = [...questionsData];
+
+            if (reviewMode) {
+                questionsToRender.sort((a, b) => {
+                    const ansA = state.answers[a.id];
+                    const ansB = state.answers[b.id];
+                    const isCorrectA = ansA !== undefined && ansA === a.correctIndex;
+                    const isCorrectB = ansB !== undefined && ansB === b.correctIndex;
+                    return (isCorrectA === isCorrectB) ? 0 : isCorrectA ? 1 : -1;
+                });
+            }
+
+            questionsToRender.forEach((q) => {
+                const isAnswered = state.answers[q.id] !== undefined;
+                const selectedOption = state.answers[q.id];
+                const isBlank = selectedOption === 4;
+                const isCorrect = selectedOption === q.correctIndex;
+
+                let html = `<div class="question-card" id="q-${q.id}">
+                                <div class="question-title">${q.text}</div>`;
+                
+                q.options.forEach((opt, optIndex) => {
+                    let classes = "option";
+                    if (isAnswered) {
+                        classes += " disabled";
+                        if (optIndex === q.correctIndex) classes += " correct";
+                        if (optIndex === selectedOption && !isCorrect && !isBlank) classes += " wrong";
+                        if (optIndex === selectedOption && isBlank) classes += " blank";
+                    }
+
+                    html += `<div class="${classes}" ${!isAnswered ? `onclick="selectOption(${q.id}, ${optIndex})"` : ''}>
+                                ${opt}
+                             </div>`;
+                });
+
+                if (isAnswered) {
+                    let feedbackClass = isCorrect ? "feedback-correct" : "feedback-wrong";
+                    let feedbackText = isCorrect ? "¡Respuesta correcta!" : 
+                                      (isBlank ? "Dejada en blanco." : "Respuesta incorrecta.");
+                    if (!isCorrect) {
+                        feedbackText += `<br>La respuesta correcta es: <strong>${q.options[q.correctIndex]}</strong>`;
+                    }
+                    html += `<div class="feedback show ${feedbackClass}">${feedbackText}</div>`;
+                }
+
+                html += `</div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        function selectOption(questionId, optionIndex) {
+            if (state.isFinished || state.answers[questionId] !== undefined) return;
+            
+            state.answers[questionId] = optionIndex;
+            
+            if (questionId > state.highestQuestionAnswered) {
+                state.highestQuestionAnswered = questionId;
+            }
+
+            saveState();
+            updateHeader();
+            renderQuiz();
+
+            if (Object.keys(state.answers).length === questionsData.length) {
+                setTimeout(finishTest, 1000);
+            }
+        }
+
+        function updateHeader() {
+            let correct = 0, wrong = 0, blank = 0;
+            const total = questionsData.length;
+            const answeredCount = Object.keys(state.answers).length;
+
+            for (const qId in state.answers) {
+                const q = questionsData.find(x => x.id == qId);
+                const ans = state.answers[qId];
+                if (ans === 4) {
+                    blank++;
+                } else if (ans === q.correctIndex) {
+                    correct++;
+                } else {
+                    wrong++;
+                }
+            }
+
+            const pending = total - answeredCount;
+            
+            let score = 0;
+            if (state.highestQuestionAnswered > 0) {
+                score = ((correct - (wrong / 3)) / state.highestQuestionAnswered) * 100;
+            }
+            score = Math.max(0, score);
+
+            const notaColor = score >= 30 ? '#2ecc71' : '#e74c3c';
+            const timerColor = state.timeRemaining < 300 ? '#e74c3c' : '#f39c12';
+
+            document.getElementById('stat-correct').innerHTML = `Acertadas: <span style="color: #2ecc71;">${correct}</span>`;
+            document.getElementById('stat-wrong').innerHTML = `Falladas: <span style="color: #e74c3c;">${wrong}</span>`;
+            document.getElementById('stat-blank').innerText = `En blanco: ${blank}`;
+            document.getElementById('stat-score').innerHTML = `Nota: <span style="color: ${notaColor};">${score.toFixed(2)}</span>`;
+            document.getElementById('stat-pending').innerText = `Pendientes: ${pending}`;
+            
+            document.getElementById('stat-timer').innerHTML = `<span style="color: ${timerColor};">⏱</span> ${formatTime(state.timeRemaining)}`;
+
+            return { correct, wrong, blank, score };
+        }
+
+        function finishTest() {
+            state.isFinished = true;
+            clearInterval(timerInterval);
+            
+            questionsData.forEach(q => {
+                if (state.answers[q.id] === undefined) {
+                    state.answers[q.id] = 4;
+                    if (q.id > state.highestQuestionAnswered) {
+                        state.highestQuestionAnswered = q.id;
+                    }
+                }
+            });
+
+            saveState();
+            showFinalModal();
+        }
+
+        function showFinalModal() {
+            const stats = updateHeader();
+            localStorage.setItem('score_test-43-1', stats.score.toFixed(2));
+            const modal = document.getElementById('modal-end');
+            const statusEl = document.getElementById('final-status');
+            const scoreEl = document.getElementById('final-score');
+            
+            modal.classList.remove('hidden');
+            
+            if (stats.score >= 50) {
+                statusEl.innerText = "¡APROBADO!";
+                statusEl.style.color = "#27ae60";
+            } else {
+                statusEl.innerText = "SUSPENSO";
+                statusEl.style.color = "#c0392b";
+            }
+            
+            scoreEl.innerText = stats.score.toFixed(2);
+            document.getElementById('final-stats').innerHTML = 
+                `Acertadas: ${stats.correct} | Falladas: ${stats.wrong} | En blanco: ${stats.blank}`;
+        }
+
+        function resetTest() {
+            if (confirm("¿Seguro que quieres reiniciar? Se perderá todo el progreso.")) {
+                localStorage.removeItem(CACHE_KEY);
+                localStorage.removeItem('score_test-43-1');
+                state = {
+                    answers: {}, 
+                    timeRemaining: questionsData.length * 60,
+                    isFinished: false,
+                    isPaused: false,
+                    highestQuestionAnswered: 0
+                };
+                
+                if (timerInterval) clearInterval(timerInterval);
+                
+                document.getElementById('modal-end').classList.add('hidden');
+                document.getElementById('header').classList.add('hidden');
+                document.getElementById('main-container').classList.add('hidden');
+                document.getElementById('modal-start').classList.remove('hidden');
+                
+                document.getElementById('btn-pause').innerText = "Pausar";
+                document.getElementById('main-container').style.opacity = "1";
+                document.getElementById('main-container').style.pointerEvents = "auto";
+                document.getElementById('btn-pause').style.display = 'inline-block';
+                document.getElementById('btn-finish').style.display = 'inline-block';
+                
+                updateHeader();
+                renderQuiz();
+            }
+        }
+
+        function reviewAnswers() {
+            document.getElementById('modal-end').classList.add('hidden');
+            document.getElementById('header').classList.remove('hidden');
+            
+            document.querySelector('.controls').style.display = 'grid'; 
+            
+            document.getElementById('btn-pause').style.display = 'none';
+            document.getElementById('btn-finish').style.display = 'none';
+            
+            renderQuiz(true);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
