@@ -7,14 +7,14 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; color: #333; }
         
-        /* Cabecera dinámica (Sticky soluciona el solapamiento de la primera pregunta) */
+        /* Cabecera dinámica */
         header { position: sticky; top: 0; width: 100%; background-color: #2c3e50; color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
         
-        .stats { display: flex; gap: 15px; font-size: 14px; font-weight: bold; flex-wrap: wrap;}
+        .stats { display: flex; gap: 15px; font-size: 14px; font-weight: bold; flex-wrap: wrap; align-items: center;}
         .stats span { background: #34495e; padding: 5px 10px; border-radius: 5px; }
+        #stat-timer { font-size: 14px; }
         
         .controls { display: flex; align-items: center; }
-        #stat-timer { background: #34495e; padding: 5px 10px; border-radius: 5px; margin-right: 10px; font-size: 14px; font-weight: bold; }
         .controls button { background-color: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-left: 10px; font-weight: bold; transition: background-color 0.2s;}
         
         /* Colores específicos para botones */
@@ -52,14 +52,15 @@
 
         /* ========= DISEÑO RESPONSIVE PARA MÓVILES ========= */
         @media (max-width: 768px) {
-            header { flex-direction: column; padding: 10px; }
-            /* Estadísticas en cuadrícula (2 columnas) */
-            .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 100%; }
-            .stats span { font-size: 12px; padding: 6px; text-align: center; margin: 0; }
-            /* Botones en cuadrícula (2 columnas) */
-            .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 100%; margin-top: 8px; }
-            #stat-timer { grid-column: span 2; text-align: center; margin: 0; padding: 8px;}
-            .controls button { margin: 0; width: 100%; font-size: 13px; padding: 10px 5px;}
+            header { flex-direction: column; padding: 10px; gap: 8px;}
+            
+            /* Estadísticas en cuadrícula de 3 columnas */
+            .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; width: 100%; }
+            .stats span { font-size: 11px; padding: 6px 2px; text-align: center; margin: 0; white-space: nowrap;}
+            
+            /* Botones en cuadrícula de 2 columnas */
+            .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 100%; }
+            .controls button { margin: 0; width: 100%; font-size: 13px; padding: 10px 4px;}
         }
     </style>
 </head>
@@ -70,15 +71,15 @@
             <span id="stat-correct">Acertadas: 0</span>
             <span id="stat-wrong">Falladas: 0</span>
             <span id="stat-blank">En blanco: 0</span>
-            <span id="stat-pending">Pendientes: 5</span>
             <span id="stat-score">Nota: 0.00</span>
+            <span id="stat-pending">Pendientes: 5</span>
+            <span id="stat-timer">⏱ 05:00</span>
         </div>
         <div class="controls">
-            <span id="stat-timer">⏱ 05:00</span>
-            <button class="btn-menu" onclick="window.location.href='index.html'">Menú de Tests</button>
             <button id="btn-pause" class="btn-pause" onclick="togglePause()">Pausar</button>
             <button id="btn-finish" onclick="finishTest()">Finalizar</button>
             <button onclick="resetTest()">Reiniciar</button>
+            <button class="btn-menu" onclick="window.location.href='index.html'">Menú de Tests</button>
         </div>
     </header>
 
@@ -180,7 +181,6 @@
 
         // Inicialización y Caché
         function init() {
-            // Actualizar textos dinámicos del inicio
             const totalQ = questionsData.length;
             document.getElementById('start-q-count').innerText = totalQ;
             document.getElementById('start-time-limit').innerText = totalQ;
@@ -195,7 +195,6 @@
                     document.getElementById('header').classList.remove('hidden');
                     document.getElementById('main-container').classList.remove('hidden');
                     
-                    // Recuperar el estado de pausa visualmente
                     const btnPause = document.getElementById('btn-pause');
                     if (state.isPaused) {
                         btnPause.innerText = "Reanudar";
@@ -243,12 +242,12 @@
                 btn.innerText = "Reanudar";
                 document.getElementById('main-container').style.opacity = "0.2";
                 document.getElementById('main-container').style.pointerEvents = "none";
-                clearInterval(timerInterval); // Asegurarnos de parar el reloj
+                clearInterval(timerInterval);
             } else {
                 btn.innerText = "Pausar";
                 document.getElementById('main-container').style.opacity = "1";
                 document.getElementById('main-container').style.pointerEvents = "auto";
-                startTimer(); // Volver a iniciar
+                startTimer();
             }
             saveState();
         }
@@ -275,7 +274,6 @@
             let questionsToRender = [...questionsData];
 
             if (reviewMode) {
-                // Ordenar: Falladas y en blanco primero, luego acertadas
                 questionsToRender.sort((a, b) => {
                     const ansA = state.answers[a.id];
                     const ansB = state.answers[b.id];
@@ -369,8 +367,8 @@
             document.getElementById('stat-correct').innerText = `Acertadas: ${correct}`;
             document.getElementById('stat-wrong').innerText = `Falladas: ${wrong}`;
             document.getElementById('stat-blank').innerText = `En blanco: ${blank}`;
-            document.getElementById('stat-pending').innerText = `Pendientes: ${pending}`;
             document.getElementById('stat-score').innerText = `Nota: ${score.toFixed(2)}`;
+            document.getElementById('stat-pending').innerText = `Pendientes: ${pending}`;
             document.getElementById('stat-timer').innerText = `⏱ ${formatTime(state.timeRemaining)}`;
 
             return { correct, wrong, blank, score };
@@ -416,10 +414,8 @@
 
         function resetTest() {
             if (confirm("¿Seguro que quieres reiniciar? Se perderá todo el progreso.")) {
-                // Borrar caché
                 localStorage.removeItem('quizState_v1');
                 
-                // Resetear estado en memoria (Mucho más fiable que reload())
                 state = {
                     answers: {}, 
                     timeRemaining: questionsData.length * 60,
@@ -430,20 +426,17 @@
                 
                 if (timerInterval) clearInterval(timerInterval);
                 
-                // Restaurar visibilidad original de Modales y Cabecera
                 document.getElementById('modal-end').classList.add('hidden');
                 document.getElementById('header').classList.add('hidden');
                 document.getElementById('main-container').classList.add('hidden');
                 document.getElementById('modal-start').classList.remove('hidden');
                 
-                // Restaurar UI de pausa y revisión si habían sido modificados
                 document.getElementById('btn-pause').innerText = "Pausar";
                 document.getElementById('main-container').style.opacity = "1";
                 document.getElementById('main-container').style.pointerEvents = "auto";
                 document.getElementById('btn-pause').style.display = 'inline-block';
                 document.getElementById('btn-finish').style.display = 'inline-block';
                 
-                // Forzar repintado visual y reinicio de la cabecera
                 updateHeader();
                 renderQuiz();
             }
@@ -453,7 +446,7 @@
             document.getElementById('modal-end').classList.add('hidden');
             document.getElementById('header').classList.remove('hidden');
             
-            document.querySelector('.controls').style.display = 'grid'; // Mantener formato grid en móvil
+            document.querySelector('.controls').style.display = 'grid'; 
             
             document.getElementById('btn-pause').style.display = 'none';
             document.getElementById('btn-finish').style.display = 'none';
@@ -461,7 +454,6 @@
             renderQuiz(true);
         }
 
-        // Arrancar
         window.onload = init;
     </script>
 </body>
