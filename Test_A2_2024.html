@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Interactivo - Examen A2 2024</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; color: #333; }
+        
+        header { position: sticky; top: 0; width: 100%; background-color: #2c3e50; color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
+        
+        .stats { display: flex; gap: 15px; font-size: 14px; font-weight: bold; flex-wrap: wrap; align-items: center;}
+        .stats span { background: #34495e; padding: 5px 10px; border-radius: 5px; }
+        #stat-timer { font-size: 14px; }
+        
+        .controls { display: flex; align-items: center; }
+        .controls button { background-color: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-left: 10px; font-weight: bold; transition: background-color 0.2s;}
+        
+        .controls button:hover { background-color: #c0392b; }
+        .controls button.btn-pause { background-color: #f39c12; }
+        .controls button.btn-pause:hover { background-color: #d68910; }
+        .controls button.btn-menu { background-color: #27ae60; }
+        .controls button.btn-menu:hover { background-color: #219653; }
+        
+        #main-container { padding: 20px; max-width: 800px; margin: 20px auto 50px auto; transition: opacity 0.3s;}
+        
+        .question-card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .question-title { font-weight: bold; margin-bottom: 15px; font-size: 16px;}
+        .option { display: block; padding: 10px 15px; border: 2px solid #ecf0f1; border-radius: 5px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; background: #fafafa;}
+        .option:hover:not(.disabled) { border-color: #bdc3c7; background: #f0f3f4; }
+        .option.disabled { cursor: not-allowed; opacity: 0.7; }
+        .option.correct { background-color: #d4edda; border-color: #28a745; color: #155724; }
+        .option.wrong { background-color: #f8d7da; border-color: #dc3545; color: #721c24; }
+        .option.blank { background-color: #e2e3e5; border-color: #6c757d; color: #383d41; }
+        
+        .feedback { margin-top: 15px; padding: 15px; border-radius: 5px; display: none; font-weight: bold; }
+        .feedback.show { display: block; }
+        .feedback-correct { background-color: #d4edda; color: #155724; border-left: 5px solid #28a745; }
+        .feedback-wrong { background-color: #f8d7da; color: #721c24; border-left: 5px solid #dc3545; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+        .modal-content { background: white; padding: 30px; border-radius: 8px; max-width: 500px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin: 0 15px;}
+        .modal-content h2 { margin-top: 0; }
+        .modal-content button { background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; font-weight: bold;}
+        .modal-content button:hover { background-color: #2980b9; }
+        .hidden { display: none !important; }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; padding: 10px; gap: 8px;}
+            .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; width: 100%; }
+            .stats span { font-size: 11px; padding: 6px 2px; text-align: center; margin: 0; white-space: nowrap;}
+            .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 100%; }
+            .controls button { margin: 0; width: 100%; font-size: 13px; padding: 10px 4px;}
+        }
+    </style>
+</head>
+<body>
+
+    <header id="header" class="hidden">
+        <div class="stats">
+            <span id="stat-correct">Acertadas: <span style="color: #2ecc71;">0</span></span>
+            <span id="stat-wrong">Falladas: <span style="color: #e74c3c;">0</span></span>
+            <span id="stat-blank">En blanco: 0</span>
+            <span id="stat-score">Nota: 0.00</span>
+            <span id="stat-pending">Pendientes: 0</span>
+            <span id="stat-timer">⏱ 00:00</span>
+        </div>
+        <div class="controls">
+            <button id="btn-pause" class="btn-pause" onclick="togglePause()">Pausar</button>
+            <button id="btn-finish" onclick="finishTest()">Finalizar</button>
+            <button onclick="resetTest()">Reiniciar</button>
+            <button class="btn-menu" onclick="window.location.href='index.html'">Menú de Tests</button>
+        </div>
+    </header>
+
+    <div id="main-container" class="hidden"></div>
+
+    <div id="modal-start" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Examen GSI-L 2024</h2>
+            <p>El cuestionario consta de <strong id="start-q-count">0</strong> preguntas.</p>
+            <p>Tienes un tiempo límite de <strong id="start-time-limit">0</strong> minutos para completarlo.</p>
+            <button onclick="startTest()">INICIAR TEST</button>
+        </div>
+    </div>
+
+    <div id="modal-end" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 id="final-status">RESULTADO</h2>
+            <h1 id="final-score" style="font-size: 48px; margin: 10px 0;">0.00</h1>
+            <p id="final-stats"></p>
+            <button onclick="resetTest()">Reiniciar Test</button>
+            <button onclick="reviewAnswers()" style="background-color: #8e44ad;">Revisar Respuestas</button>
+            <button onclick="window.location.href='index.html'" style="background-color: #27ae60;">Volver al Menú</button>
+        </div>
+    </div>
+
+    <script>
+        // Formato compacto para poder añadir fácilmente decenas de preguntas.
+        // Recuerda: correctIndex empieza en 0. a=0, b=1, c=2, d=3. "Dejar en blanco" siempre es la última.
+        const questionsData = [
+            { id: 1, text: "1. En virtud del artículo 63.3 de la Constitución Española de 1978, ¿a quién corresponde declarar la guerra y hacer la paz?", options: ["a) A las Cortes Generales, previa autorización del Rey.", "b) Al Rey, previa autorización del Congreso.", "c) Al Congreso de los Diputados, previa autorización del Rey.", "d) Al Rey, previa autorización de las Cortes Generales.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 2, text: "2. Según el apartado 2 del articulo 59 de la Constitución Española de 1978, ¿qué sucede si el Rey se inhabilitare para el ejercicio de su autoridad, y la imposibilidad fuere reconocida por las Cortes Generales?", options: ["a) El Rey siguiere en su puesto, pero delegando sus funciones a la figura del Presidente del Gobierno.", "b) Entrará a ejercer inmediatamente la Regencia el Príncipe heredero de la Corona, si fuere mayor de edad.", "c) Se sometiere a referéndum distintas propuestas de candidatos para la delegación de funciones.", "d) Las funciones del Rey son ejercidas por un Responsable provisional del Gobierno designado a tales efectos por el Congreso de los Diputados por mayoría absoluta de la Cámara Alta.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 3, text: "3. Conforme al artículo 99 de la Constitución Española de 1978, ¿cómo se elige al Presidente del Gobierno en España?", options: ["a) Es elegido directamente por los ciudadanos.", "b) Es nombrado por el Rey a propuesta del Congreso de los Diputados.", "c) Es elegido por el Senado.", "d) Es elegido por el Congreso de los Diputados tras ser propuesto por el Rey.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 4, text: "4. ¿Qué sucede si el Congreso de los Diputados no aprueba los Presupuestos Generales del Estado?", options: ["a) El Gobierno debe dimitir.", "b) Se prorrogan automáticamente los Presupuestos del año anterior.", "c) Se disuelven las Cortes Generales.", "d) El Senado toma el control del proceso presupuestario.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 5, text: "5. ¿Cuál de las siguientes funciones NO es encomendada al Gobierno según el artículo 97 de la Constitución Española de 1978?", options: ["a) Acreditar a los embajadores y otros representantes diplomáticos.", "b) Dirigir la política interior y exterior.", "c) Ejercer la potestad reglamentaria de acuerdo con la Constitución y las leyes.", "d) Dirigir la Administración civil y militar.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 6, text: "6. ¿Cuál de las siguientes funciones NO es del Consejo de Transparencia y Buen Gobierno según el artículo 38 de la Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno?", options: ["a) Evaluar el grado de aplicación de esta Ley.", "b) Imponer sanciones cuando el responsable de la infracción sea un alto cargo de la Administración General del Estado.", "c) Promover actividades de formación y sensibilización para un mejor conocimiento de las materias reguladas por esta Ley.", "d) Informar preceptivamente los proyectos normativos de carácter estatal que desarrollen esta Ley o que estén relacionados con su objeto.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 7, text: "7. ¿Cuál de las siguientes opciones NO es uno de los Ejes de Actuación recogidos en el Pacto de Estado contra la Violencia de Género?", options: ["a) El impulso de la formación de los distintos agentes para garantizar la mejor respuesta asistencial.", "b) La mejora de las oportunidades de empleo en las zonas rurales, disminuyendo la exclusión social, incrementando la igualdad entre mujeres y hombres y las oportunidades para jóvenes, consolidando la resiliencia comunitaria.", "c) La mejora de la respuesta institucional a través de la coordinación y el trabajo en red.", "d) La visualización y atención de otras formas de violencia contra las mujeres, prestando especial atención a la violencia sexual, a la trata de mujeres y niñas con fines de explotación sexual, a la mutilación genital femenina y a los matrimonios forzados.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 8, text: "8. Según la Ley 39/2006, de 14 de diciembre, de Promoción de la Autonomía Personal y Atención a las personas en situación de dependencia, ¿quién tiene derecho a las prestaciones de dependencia?", options: ["a) Cualquier persona mayor de edad.", "b) Sólo personas en edad laboral.", "c) Personas en situación de dependencia reconocida en los términos establecidos por la ley.", "d) Exclusivamente personas con enfermedades crónicas.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 9, text: "9. ¿A qué se refiere el término STORK?", options: ["a) A un proyecto para conseguir el reconocimiento paneuropeo de las identidades electrónicas, y en concreto la aceptación del DNI electrónico e identificadores similares en Servicios de Administración Electrónica de otras administraciones europeas.", "b) A un sistema de verificación de edad para proteger a los menores de edad ante el acceso a contenidos de adultos en Internet.", "c) Al plan de medidas lanzado por el Ministerio para la Transformación Digital y de la Función Pública para combatir las estafas telefónicas y por SMS.", "d) Al proyecto de interoperabilidad semántica en los sistemas de información del Sistema Nacional de Salud y en el intercambio de documentación clínica en proyectos nacionales e internacionales.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 10, text: "10. En virtud del artículo 9.3 del Reglamento de Ejecución (UE) 2015/1501... los operadores de los nodos eIDAS deberán almacenar los datos que permitan la reconstrucción... Estos datos constarán como mínimo de los siguientes elementos:", options: ["a) Identificación del nodo; identificación de los mensajes; fecha y hora de los mensajes.", "b) Identificación del nodo; identificación de los interlocutores; fecha y hora de los mensajes.", "c) Identificación del nodo; identificación de los mensajes; identificación de los interlocutores; fecha y hora de los mensajes.", "d) Identificación del nodo; identificación de los mensajes; identificación de los interlocutores.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 11, text: "11. Señale la respuesta correcta. Según el artículo 7 de la Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales:", options: ["a) El tratamiento de los datos personales de un menor de edad únicamente podrá fundarse en su consentimiento cuando sea mayor de doce años.", "b) El tratamiento de los datos personales de un menor de edad únicamente podrá fundarse en su consentimiento cuando sea mayor de catorce años.", "c) El tratamiento de los datos personales de un menor de edad únicamente podrá fundarse en su consentimiento cuando sea mayor de quince años.", "d) El tratamiento de los datos personales de un menor de edad únicamente podrá fundarse en su consentimiento cuando sea mayor de dieciséis años.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 12, text: "12. Señale la opción correcta de acuerdo al Reglamento (UE) 2016/679 del Parlamento Europeo y del Consejo... relativo a la protección de las personas físicas (RGPD):", options: ["a) Para realizar un tratamiento de datos personales, no es necesario contar con una base que lo legitime.", "b) Para realizar un tratamiento de datos personales, hay que contar con una base que lo legitime. Algunas de las posibles opciones... son el cumplimiento de una obligación legal del responsable, o el cumplimiento de una misión en interés público o en ejercicio de poderes públicos.", "c) Para realizar un tratamiento de datos personales, hay que contar con una base que lo legitime. Algunas de las posibles opciones... son el cumplimiento de una obligación legal del responsable, o el cumplimiento de una misión en interés público o en ejercicio de poderes particulares.", "d) Para realizar un tratamiento de datos personales, hay que contar con una base que lo legitime. Algunas de las posibles opciones... son el consentimiento del interesado, el cumplimiento de una obligación legal del responsable, o el cumplimiento de una misión en interés público o en ejercicio de poderes públicos.", "e) Dejar en blanco."], correctIndex: 2 }, // Nota: la opción d era casi idéntica, pero la correcta según plantilla es la c/d (marcamos c según índice). Revisar plantilla: 12 es c.
+            { id: 13, text: "13. Complete la siguiente frase según el artículo 43 de la Ley 39/2015... se entenderá rechazada cuando hayan transcurrido (...) desde la puesta a disposición de la notificación sin que se acceda a su contenido.", options: ["a) Diez días hábiles.", "b) Cinco días naturales.", "c) Cinco días hábiles.", "d) Diez días naturales.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 14, text: "14. ¿Cuál de los siguientes NO es un motivo de abstención según la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público?", options: ["a) Tener interés personal en el asunto de que se trate...", "b) Tener un vínculo matrimonial o situación de hecho asimilable y el parentesco de consanguinidad dentro del quinto grado...", "c) Tener relación de servicio con persona natural o jurídica interesada directamente en el asunto...", "d) Haber intervenido como perito o como testigo en el procedimiento de que se trate.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 15, text: "15. Señale la respuesta correcta en relación con la Carpeta Ciudadana del sector público estatal:", options: ["a) El interesado accederá a la Carpeta Ciudadana mediante los sistemas de identificación a los que se refiere el artículo 9.2 de la Ley 39/2015.", "b) Pueden acceder a la misma el interesado y sus herederos.", "c) Es el área personalizada de las personas interesadas de la sede electrónica del Portal de Transparencia.", "d) Ofrece funcionalidades como el acceso a las tarjetas de crédito del interesado.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 16, text: "16. ¿Qué deben cumplir los conjuntos de datos de alto valor según la Ley 37/2007, de 16 de noviembre, sobre reutilización de la información del sector público?", options: ["a) Estarán disponibles previo pago de la tasa correspondiente.", "b) Se suministrarán en fichero .pfx por enlace de descarga.", "c) Se suministrarán a través de interfaz de programación de aplicaciones (API).", "d) En ningún caso se proporcionarán en forma de descarga masiva.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 17, text: "17. ¿Cuáles de los siguientes corresponden a utilidades para portales y servicios públicos ofrecidos en el Catálogo de Servicios de Administración Digital de la Secretaría General de Administración Digital (SGAD)?", options: ["a) PLATA, EGEO, OAG.", "b) PLATA, EGEO, OAW.", "c) FORMA, EGEO, OAW.", "d) PLATA, FORMA, OAW.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 18, text: "18. ¿Cuál de los siguientes servicios comunes es un sistema para la gestión de documentos y expedientes electrónicos que cumple los requisitos para que ambos puedan almacenarse y/o obtenerse según el Esquema Nacional de Interoperabilidad (ENI)?", options: ["a) CISE.", "b) RUN.", "c) InSiDe.", "d) CIRCABC.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 19, text: "19. ¿Qué clase de escalabilidad aplicamos cuando ampliamos memoria en el disco duro de un ordenador sobremesa?", options: ["a) Escalabilidad horizontal.", "b) Escalabilidad en carga.", "c) Escalabilidad vertical.", "d) Escalabilidad de redundancia.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 20, text: "20. En relación con los multiprocesadores, según la taxonomía de Flynn, los sistemas vectoriales y matriciales se encuadran dentro de la clasificación:", options: ["a) SSID (Single instruction, single data).", "b) SIMD (Single instruction, multiple data).", "c) MISD (Multiple instruction, single data).", "d) MIMD (Multiple instruction, multiple data).", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 21, text: "21. En la administración de servidores Windows, ¿qué son las directivas de seguridad?", options: ["a) Herramientas de gestión de los privilegios de seguridad a nivel de dominio, de controlador de dominio y local.", "b) Herramientas de resolución de nombres Windows, también llamadas DNS.", "c) Herramientas que sirven para configurar el acceso a los recursos compartidos, también llamadas DFS (sistemas distribuidos de seguridad).", "d) Herramientas de administración de seguridad de Internet, también llamadas IIS.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 22, text: "22. Linux es un sistema operativo de código libre basado en Unix. Sus diferentes versiones se denominan:", options: ["a) Instalaciones.", "b) Distribuciones.", "c) Licencias adaptadas.", "d) Variaciones permitidas.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 23, text: "23. Hay lenguajes de programación que soportan únicamente un paradigma. Lo normal es que los lenguajes soporten dos o más paradigmas de programación. Si nos referimos a PHP, podemos afirmar que soporta los siguientes paradigmas:", options: ["a) Lógico y declarativo.", "b) Lógico, declarativo y genérico.", "c) Imperativo, orientado a objetos (prototipos) y concurrente.", "d) Imperativo, orientado a objetos, funcional y reflexivo.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 24, text: "24. Refiriéndonos a una constante en un programa en lenguaje C, podemos afirmar que:", options: ["a) También es conocida como conversión o casting.", "b) Es una entidad cuyo valor no puede ser modificado por el programa.", "c) Puede ser local, global, estática y externa.", "d) Se divide en conversiones y ámbitos.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 25, text: "25. ¿Cuál de los siguientes NO es un tipo de OLAP (On-Line Analytical Processing)?", options: ["a) ROLAP (Relational On Line Analytic Processing).", "b) SOLAP (Spiral On Line Analytic Processing).", "c) MOLAP (Multidimentional On Line Analytic Processing).", "d) HOLAP (Hybrid On Line Analytic Processing).", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 26, text: "26. Un KPI (Key Performance Indicator) es un indicador vinculado a un objetivo. De las siguientes afirmaciones, señale la INCORRECTA:", options: ["a) Los objetivos pueden ser borrosos y no estar delimitados.", "b) Los objetivos deben ser exactos.", "c) Los indicadores deben ser analizables periódicamente.", "d) Los objetivos deben ser medibles.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 27, text: "27. La relación entre dos tablas que permite que un registro de una se relacione con ninguno, uno o varios registros en la otra tabla, se denomina:", options: ["a) Relaciones persistentes.", "b) Relación univoca.", "c) Relación uno a varios.", "d) Relaciones varios a varios.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 28, text: "28. En una base de datos relacional, al conjunto de atributos que identifican unívoca y minimamente cada tupla, en una relación, se le denomina:", options: ["a) Clave inherente.", "b) Clave candidata.", "c) Clave semántica.", "d) Clave obligatoria.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 29, text: "29. ¿Cuál es una caracteristica de los sistemas operativos distribuidos?", options: ["a) Reloj común.", "b) Concurrencia global.", "c) Homogeneidad.", "d) Dependencia de fallos de los nodos del sistema.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 30, text: "30. ¿Cuál es uno de los elementos de una arquitectura de servicios web?", options: ["a) SOAP.", "b) VSDL.", "c) UDI.", "d) SOA.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 31, text: "31. ¿Qué protocolo se usa en las herramientas de monitorización para hacer consultas del estado de los activos?", options: ["a) NDMP (Network Data Management Protocol).", "b) SNMP (Simple Network Management Protocol).", "c) NMS (Network Management System).", "d) ONTP (Open Network Transaction Protocol).", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 32, text: "32. Dentro del modelo TCP/IP ¿cuál es una dirección de clase B?", options: ["a) 128.0.0.0", "b) 127.0.0.1", "c) 10.0.0.0", "d) 126.255.255.255", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 33, text: "33. ¿Cuál No es un modelo de calidad de servicio (QoS) en una arquitectura de redes?", options: ["a) Best-effort.", "b) DiffServ (Differentiated Services).", "c) IntServ (Integrated Services).", "d) PriServ (Priority Services).", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 34, text: "34. En relación a los DTD y XML Schemas, ¿cuál es la respuesta correcta?", options: ["a) XML Schema tiene sintaxis propia.", "b) DTD permite definir nuevos tipos de datos.", "c) DTD es extensible.", "d) XML Schema es fuertemente tipado.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 35, text: "35. ¿Cuál es una de las dimensiones de seguridad de la información?", options: ["a) Aislamiento.", "b) Consistencia.", "c) Disponibilidad.", "d) Autenticación.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 36, text: "36. ¿Cuál de las siguientes es una amenaza que afecta a la integridad de la información?", options: ["a) Revelación intencionada de información: un usuario interno de la organización por diversas motivaciones decide revelar información de la que tiene acceso.", "b) Fugas de información: de forma no intencionada, la información acaba en manos de quién no debe poseerla.", "c) Ransomware o criptoataque: un malware ataca nuestro sistema cifrando los archivos de modo que están irrecuperables salvo que se halle la clave para su descifrado.", "d) Ingeniería social: un atacante utiliza tretas para sonsacar información de los usuarios que tienen acceso a la misma.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 37, text: "37. ¿Cuál es la herramienta del CCN para la gobernanza de la ciberseguridad, que permite evaluar regularmente el estado de la seguridad de los sistemas TIC de las entidades, organismos y organizaciones?", options: ["a) ATENEA.", "b) CLARA.", "c) INES.", "d) CARLA.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 38, text: "38. Según el artículo 31.1 del Real Decreto 311/2022, de 3 de mayo, por el que se regula el Esquema Nacional de Seguridad (ENS), indique la afirmación correcta en relación al tiempo en el que un sistema de información debe ser objeto de una auditoría regular ordinaria...", options: ["a) Al menos cada año si el sistema es considerado de categoría Alta y cada 2 años si el sistema es considerado de categoría Media o Baja.", "b) Al menos cada 3 años, siempre que no se produzcan modificaciones sustanciales en los sistemas de información.", "c) Al menos cada 2 años.", "d) Al menos cada 2 años si el sistema es considerado de categoría Baja, cada año si el sistema es considerado de categoría Media, y cada 6 meses si el sistema es considerado de categoría Alta...", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 39, text: "39. ¿Qué es la arquitectura multicanal en un sistema de atención al cliente?", options: ["a) Un sistema que integra diferentes servidores en una misma red.", "b) La capacidad de atender a los clientes a través de múltiples canales de comunicación, como teléfono, correo electrónico, chat, redes sociales, entre otros.", "c) Un protocolo para establecer comunicación segura entre el cliente y el servidor.", "d) Un tipo de base de datos utilizada en centros de contacto.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 40, text: "40. ¿Cuál de los siguientes tipos de CRM se centra en mejorar la interacción con los clientes a través de múltiples canales?", options: ["a) CRM Geográfico.", "b) CRM Analítico.", "c) CRM Operacional.", "d) CRM Colaborativo.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 41, text: "41. Cuál de las siguientes afirmaciones sobre el Sistema de Alerta Temprana (SAT), es correcta:", options: ["a) SAT-INET es un servicio para la detección en tiempo real de las amenazas e incidentes existentes en el tráfico en las redes de control y supervisión industrial del Organismo adscrito.", "b) SAT-INET en ningún momento se centra en el análisis del contenido del tráfico, que no sea relevante en la detección de una amenaza.", "c) SAT-ICS es un servicio para la detección en tiempo real de las amenazas e incidentes existentes en el tráfico que fluye entre la red interna del Organismo adscrito e Internet.", "d) SAT-ICS detecta patrones de distintos tipos de ataque y amenazas mediante el análisis del tráfico de red, en ningún momento se centra en el tráfico en protocolos industriales.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 42, text: "42. Según el CCN-CERT, ¿cuántos y cuáles son los niveles de impacto potencial de peligrosidad que se le pueden asignar a un ciberincidente?", options: ["a) Son 3 niveles: bajo, medio y alto.", "b) Son 4 niveles: bajo, medio, alto y muy alto.", "c) Son 5 niveles: bajo, medio, alto, muy alto y crítico.", "d) Son 6 niveles: bajo, medio, alto, muy alto, crítico y muy crítico.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 43, text: "43. ¿Cuál de las siguientes es una técnica utilizada en la Gestión de Derechos Digitales (DRM)?", options: ["a) Multiplicación de datos.", "b) Compresión de archivos.", "c) Marcas de agua.", "d) Minimización del código.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 44, text: "44. ¿Dónde se recoge la protección jurídica de los programas de ordenador en España?", options: ["a) Ley 24/2015, de 24 de julio, de Patentes.", "b) Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales.", "c) Real Decreto Legislativo 1/1996, de 12 de abril, por el que se aprueba el texto refundido de la Ley de Propiedad Intelectual...", "d) Ley 11/2022, de 28 de junio, General de Telecomunicaciones.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 45, text: "45. El objetivo de un análisis de viabilidad es:", options: ["a) Reutilizar soluciones ya existentes en otras organizaciones.", "b) Disponer de criterios económicos, técnicos, legales y operativos que nos permitan decidir si seguir adelante con un proyecto o abandonar.", "c) Evaluar las necesidades de la organización con vistas a acometer un solo proyecto que las integre.", "d) Desarrollar un cronograma detallado del proyecto.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 46, text: "46. En el proceso de seguimiento de un proyecto informático, la monitorización y control del trabajo:", options: ["a) Sólo se realiza en las fases iniciales del proyecto.", "b) No incluye la toma de acciones preventivas y/o correctivas.", "c) Se enfoca únicamente en la gestión de riesgos.", "d) Nos permite comprender el estado actual del proyecto, las medidas adoptadas y las proyecciones del presupuesto, el cronograma y el alcance.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 47, text: "47. ¿Cuál es la principal función de un sistema de gestión documental?", options: ["a) Facilitar la edición de imágenes y videos.", "b) Almacenar, gestionar y controlar el acceso a documentos digitales dentro de una organización.", "c) Crear y distribuir boletines informativos digitales.", "d) Gestionar la contabilidad de una empresa.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 48, text: "48. ¿Cuál de las siguientes afirmaciones con respecto al modelo de ciclo de vida en cascada es correcta?", options: ["a) Los usuarios establecen los requisitos del sistema en diferentes fases del proyecto.", "b) El modelo es muy rígido, dado que es necesario finalizar cada actividad para iniciar la siguiente, lo que dificulta su adecuación a escenarios reales.", "c) El modelo dificulta la estimación y seguimiento del progreso del proyecto, al no disponer de entregables intermedios.", "d) Se dispone de versiones funcionales del sistema desde las etapas iniciales del proceso de desarrollo.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 49, text: "49. En el modelo de ciclo de vida en cascada pura, ¿qué sucede si la revisión del paso a la siguiente etapa del proyecto NO es satisfactoria?", options: ["a) Se continua con la etapa siguiente.", "b) Se retrocede a la etapa anterior.", "c) Se permanece en la etapa actual hasta que esté preparada.", "d) Se comienza otra vez con la primera etapa.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 50, text: "50. Indique cuál de las siguientes NO es una metodología ágil:", options: ["a) Scrum.", "b) Extreme Programing (XP).", "c) Métrica v3.", "d) Lean.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 51, text: "51. ¿Cuál es el propósito principal del método PERT (Program Evaluation and Review Technique) en la gestión de proyectos?", options: ["a) Estimar los costes de un proyecto.", "b) Identificar riesgos financieros y establecer estrategias de mitigación.", "c) Identificar las rutas críticas y calcular el tiempo esperado de finalización del proyecto.", "d) Evaluar la rentabilidad de un proyecto.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 52, text: "52. Indique cuál de las siguientes afirmaciones, referidas al concepto de prototipo en el desarrollo de software, es INCORRECTA:", options: ["a) Es un producto software que se obtiene en una fase anterior a la finalización de un proyecto de desarrollo.", "b) No tiene por qué implementar todas las funcionalidades del sistema.", "c) El uso de prototipos no va a reducir el riesgo del proyecto.", "d) Una vez se ha usado un prototipo, puede servir de base para el desarrollo del sistema.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 53, text: "53. ¿Cuál de los siguientes enunciados NO es una ventaja del uso de prototipos?", options: ["a) Para los usuarios es más fácil de evaluar un prototipo que un documento de especificación de requisitos software.", "b) Hay una continua revisión de los requisitos del sistema por los usuarios.", "c) Siempre es sencillo evolucionar el prototipo si se ha desarrollado con poca calidad.", "d) Los usuarios tienen mucha más facilidad a la hora de describir lo que necesitan si lo ven en un prototipo.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 54, text: "54. Un programa informático que utiliza inteligencia artificial y procesamiento del lenguaje natural para comprender preguntas es lo que comúnmente se conoce como:", options: ["a) Total Test de Turing.", "b) Maquina de Turing con estados finitos.", "c) Chatbot.", "d) Deep Blue.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 55, text: "55. Jenkins es:", options: ["a) Un proyecto de código propietario para la automatización de las pruebas de software.", "b) Un servidor web open source basado en Java.", "c) Una especificación de servicios para desarrollo de aplicaciones móviles basado en patrones.", "d) Un servidor de automatización open source escrito en Java para la integración continua de desarrollos software.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 56, text: "56. ¿Cuál de las siguientes es una herramienta de software para la gestión y construcción de proyectos Java basada en el llamado Modelo de Objetos de Proyecto (POM), el cual se define y mantiene en un fichero XML?", options: ["a) Octopus Deploy.", "b) ElasticBox.", "c) ElectricCloud.", "d) Maven.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 57, text: "57. ¿Qué son pruebas de caja blanca?", options: ["a) Pruebas que se centran en evaluar el código fuente interno de una aplicación.", "b) Pruebas que consisten en probar un sistema o programa informático sin tener conocimiento previo de su funcionamiento interno.", "c) Pruebas que evalúan la seguridad de una aplicación web en tiempo de ejecución.", "d) Pruebas estáticas que evalúan el rendimiento y carga que soporta una aplicación.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 58, text: "58. ¿Qué es JUnit?", options: ["a) Un entorno para pruebas en la JVM.", "b) Un framewok para el desarrollo de aplicaciones en JScript.", "c) Un IDE para desarrollo de aplicaciones Java.", "d) Un servidor de aplicaciones que cumple la especificación Java EE.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 59, text: "59. ¿Cuál de las siguientes NO es una modalidad de migración de aplicaciones?", options: ["a) Refronting.", "b) Replacement.", "c) Reconsidering.", "d) Rehosting.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 60, text: "60. ¿Cuál de los siguientes tipos de mantenimiento software está dentro del ámbito de Métrica v3?", options: ["a) El mantenimiento evolutivo.", "b) El mantenimiento adaptativo.", "c) El mantenimiento perfectivo.", "d) El mantenimiento preventivo.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 61, text: "61. ¿Cuál de las siguientes opciones NO es una característica del diseño orientado a objetos?", options: ["a) Reusabilidad.", "b) Herencia.", "c) Cohesión débil.", "d) Polimorfismo.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 62, text: "62. ¿Cuál de los siguientes es un formato válido para el empaquetamiento de aplicaciones en Java Enterprise Edition (JEE)?", options: ["a) VAR (Version Archive).", "b) LAR (Library Archive).", "c) SAR (Service Archive).", "d) CAR (Class file Archive).", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 63, text: "63. ¿Cuál de los siguientes es un servidor de aplicaciones Java Enterprise Edition (JEE)?", options: ["a) Apache Tomcat.", "b) IBM WebSphere.", "c) Oracle Jdeveloper.", "d) Oracle Exadata.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 64, text: "64. ¿Qué tipo de objeto utiliza la plataforma .NET para encapsular la información sobre el usuario o la entidad que se está validando?", options: ["a) Objeto User.", "b) Objeto Passport.", "c) Objeto Identity.", "d) Objeto Token.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 65, text: "65. ¿Qué clase se utiliza para manejar excepciones en .NET?", options: ["a) Error.", "b) Fault.", "c) Issue.", "d) Exception.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 66, text: "66. ¿Cuál de las siguientes afirmaciones con respecto al estándar UDDI de OASIS es correcta?", options: ["a) UDDI define un esquema XML para sindicación de contenidos a través de lectores RSS.", "b) UDDI define un lenguaje XML para describir la interfaz de servicios web.", "c) UDDI define la pautas de accesibilidad para el contenido en la Web.", "d) UDDI describe un protocolo para el registro y publicación de servicios web.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 67, text: "67. En relación con la mejora y evaluación de procesos para el desarrollo de sistemas de software, ¿cuál de los siguientes NO es uno de los niveles de madurez del Modelo CMMI?", options: ["a) Gestionado.", "b) Definido.", "c) Aprobado.", "d) Optimización.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 68, text: "68. ¿Qué miden los puntos de función en un sistema de software?", options: ["a) El tamaño del sistema.", "b) El rendimiento del sistema.", "c) La seguridad del sistema.", "d) La fiabilidad del sistema.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 69, text: "69. La capacidad de un sitio web para ser utilizado por todas las personas, independientemente de sus habilidades o discapacidades, se denomina:", options: ["a) Accesibilidad.", "b) Usabilidad.", "c) Navegación intuitiva.", "d) Compatibilidad.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 70, text: "70. ¿Qué es WCAG y cuál es su propósito principal?", options: ["a) Un software para evaluar la accesibilidad de sitios web.", "b) Un estándar que define las pautas para hacer que el contenido web sea accesible.", "c) Un conjunto de herramientas para desarrollar sitios web adaptativos (responsive).", "d) Una guía de buenas prácticas para la optimización de motores de búsqueda (SEO).", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 71, text: "71. ¿Qué es Spark en el contexto de Big Data?", options: ["a) Un servicio de computación sin servidor que ejecuta código en respuesta a eventos...", "b) Un servicio de administración de base de datos que permite catalogar...", "c) Un sistema de procesamiento distribuido de código abierto que se utiliza para cargas de trabajo de macrodatos.", "d) Una base de datos administrada que proporciona un registro de transacciones transparente...", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 72, text: "72. ¿Qué es la validación cruzada en mineria de datos?", options: ["a) Un método para evaluar la precisión de un modelo.", "b) Un proceso para limpiar datos no válidos descartados por el modelo.", "c) Una técnica para sobreajustar el modelo entrenándolo y validándolo con los mismos datos.", "d) Un tipo de algoritmo de minería de datos basado en la técnica de Train-Test Split...", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 73, text: "73. En sistemas operativos, la planificación del procesador asigna momentos para que los procesos puedan utilizar el sistema y sus recursos. El algoritmo que asigna los turnos de ejecución de forma que los procesos estén ordenados en una cola circular... es conocido como:", options: ["a) SJF.", "b) FCFS.", "c) HRN.", "d) Round Robin.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 74, text: "74. En el sentido más fundamental, cuando una aplicación necesita leer datos en un dispositivo llama a una función que le ofrece el sistema operativo, y el sistema operativo llama a una función implementada en el:", options: ["a) Microkernel.", "b) Módulo SVC.", "c) Controlador del bus.", "d) Controlador o driver.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 75, text: "75. ¿Qué es la normalización en bases de datos?", options: ["a) El proceso de organizar los datos para reducir la redundancia.", "b) El proceso de crear índices en las columnas de la base de datos para agilizar las búsquedas.", "c) El proceso por el cual, aunque los datos están distribuidos en varias ubicaciones, los usuarios tienen la impresión de que los datos se encuentran en un solo lugar.", "d) El proceso de transformación de una base de datos para que pueda ser considerada relacional según las normas de Codd.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 76, text: "76. ¿Qué es el algoritmo de Paxos en bases de datos distribuidas?", options: ["a) Un algoritmo para asegurar la consistencia eventual en sistemas distribuidos.", "b) Un algoritmo para coordinar la replicación de datos en bases de datos distribuidas.", "c) Un algoritmo de consenso para asegurar que múltiples nodos en un sistema distribuido acuerden un valor único.", "d) Un algoritmo para la gestión de transacciones en bases de datos relacionales.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 77, text: "77. ¿Qué significa el 2 en la regla de la copia de seguridad 3-2-1?", options: ["a) Deben hacerse 2 copias de datos.", "b) Deben utilizarse 2 formatos o soportes distintos.", "c) Las copias de seguridad deben almacenarse en 2 ubicaciones distintas.", "d) Deben utilizarse 2 herramientas diferentes para la realización de las copias de seguridad.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 78, text: "78. El llamado conflicto de fusión (merge conflict) está relacionado con:", options: ["a) Un problema de compatibilidad entre diferentes versiones de un sistema operativo.", "b) Un problema de recuperación de una copia de seguridad...", "c) El control de versiones en el desarrollo software.", "d) Un problema de sincronización entre diferentes bases de datos.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 79, text: "79. ¿Qué es ELK (Elasticsearch, Logstash y Kibana) Stack?", options: ["a) Un conjunto de herramientas para la búsqueda, análisis y visualización de datos.", "b) Un sistema de gestión de identidades que asegura el acceso a los datos de monitorización...", "c) Una plataforma de análisis de sentimientos que utiliza procesamiento de lenguaje natural...", "d) Una plataforma de blockchain utilizada para asegurar transacciones en redes distribuidas...", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 80, text: "80. Un sistema RAID-5 formado por 5 discos:", options: ["a) Muestra una tolerancia de fallo de 1 disco.", "b) Muestra una tolerancia de fallo de 2 discos.", "c) Muestra una tolerancia de fallo de 3 discos.", "d) La tolerancia de fallo dependerá de la casuística y de cómo se distribuyan los bloques de paridad.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 81, text: "81. El protocolo LACP (Link Aggregation Control Protocol - IEEE 802.3ad):", options: ["a) Permite el establecimiento de redes lógicas Ethernet en infraestructuras Ethernet nativas para mantener dinámicamente la topología entre nodos.", "b) Se desarrolló para minimizar la posición dominante de las tarjetas de red de Cisco y compatibilizarlas con las de sus entonces rivales.", "c) Permite combinar varias conexiones de red físicas en una sola conexión lógica para aumentar el rendimiento y proporcionar redundancia.", "d) Proporciona conmutación modo activo/pasivo en las conexiones de red físicas para ofertar alta disponibilidad.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 82, text: "82. Con respecto a la virtualización, podemos afirmar que un hipervisor de tipo 1:", options: ["a) Ocupa el lugar de un sistema operativo host y programa los recursos de las máquinas virtuales directamente en el hardware.", "b) Siempre es open source por compatibilidad con el sistema operativo host.", "c) También llamado 'alojado', permite múltiples lenguajes de programación sobre el sistema operativo host.", "d) Se ejecuta por encima del sistema operativo convencional como una capa de software o una aplicación.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 83, text: "83. ¿Qué diferencia existe entre conectores ópticos APC y UPC?", options: ["a) Las pérdidas de APC son del orden de 55 dB, mientras que las de UPC lo son de 65 dB.", "b) APC es tipo PC Connector y UPC es tipo Flat Connector.", "c) APC está pulido en ángulo de 8 grados y UPC está pulido sin ángulo.", "d) UPC requiere alimentación externa y APC no la necesita.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 84, text: "84. Una diferencia entre cables de datos CAT6 y CAT6a es que:", options: ["a) CAT6 resiste mejor las interferencias que CAT6a.", "b) CAT6 suele estar apantallado y CAT6a no.", "c) CAT6 soporta anchos de banda hasta 250 MHz y CAT6a hasta 500 MHz.", "d) CAT6 alcanza 10 Gbps y CAT6a alcanza 100 Gbps.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 85, text: "85. En relación al ámbito de la seguridad de la red de una organización, podríamos afirmar que:", options: ["a) IDS (Intrusion Detection System) es un servidor en la red que bloquea los accesos no autorizados.", "b) IPS (Intrusion Prevention System) es un software que se utiliza para un análisis forense de los ataques y accesos no autorizados.", "c) SIEM (Security Information and Event Management) es un software que engloba la gestión de información de seguridad y la gestión de eventos.", "d) IGS (Intrusion Gateway System) combina las tareas de un IDS y un IPS, proporcionando un análisis en tiempo real...", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 86, text: "86. Una de las diferencias entre los protocolos de enrutamiento IS-IS y OSPF es:", options: ["a) IS-IS es del tipo EGP (Exterior Gateway Protocol), OSPF del tipo IGP (Interior Gateway Protocol).", "b) IS-IS es del tipo vector-distancia, OSPF del tipo estado-enlace.", "c) IS-IS es del tipo estado-enlace, OSPF del tipo vector-distancia.", "d) IS-IS no es de la capa 3 de OSI, OSPF sí lo es.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 87, text: "87. NESSUS es:", options: ["a) Una utilidad gráfica para mostrar los datos obtenidos por SNMP.", "b) Una herramienta para gestión de correo electrónico en entornos no Windows.", "c) Una herramienta para distribución de políticas GPO en entornos no Windows.", "d) Una herramienta de código abierto para escaneo de vulnerabilidades y pentesting.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 88, text: "88. En cuanto al protocolo de enrutamiento RIP, supongamos que un router A ha aprendido el coste hacia una red a través de router B. ¿Cuál es el mecanismo que utiliza el router B para anunciar al router A un cambio de métrica en esa ruta, sin esperar al siguiente ciclo de actualización?", options: ["a) Poison Reverse.", "b) Triggered Updates.", "c) Split Horizon.", "d) Split Horizon con Poison Reverse.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 89, text: "89. En una red MPLS (Multiprotocol Label Switching), ¿cómo se denomina el tráfico que se encamina bajo una etiqueta y es tratado del mismo modo por un conmutador?", options: ["a) LER (Label Edge Router).", "b) FEC (Forwarding Equivalence Class).", "c) LSR (Label Switching Router).", "d) LFP (Label Forwarding Package).", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 90, text: "90. Con respecto a la familia de protocolos 802.11 ¿cuál de las siguientes afirmaciones es correcta?", options: ["a) 802.11g puede utilizar QAM (Quadrature Amplitude Modulation) para transmisión.", "b) La velocidad máxima teórica de 802.11a es de 54 Mbps.", "c) 802.11n solo utiliza la banda de 5 GHz.", "d) 802.11b ofrece hasta 4 canales no solapados.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 91, text: "91. ¿Cuál es el principal objetivo del principio de 'mínimo privilegio' en el diseño de redes?", options: ["a) Asegurar que todos los usuarios tengan acceso a la red.", "b) Permitir acceso total a todos los usuarios.", "c) Limitar el acceso de los usuarios solo a lo necesario para sus tareas.", "d) Proporcionar acceso ilimitado a los administradores de red.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 92, text: "92. Al tipo de ataque que se caracteriza por el uso de múltiples dispositivos conectados a Internet para inundar un objetivo con tráfico de peticiones hasta comprometer la disponibilidad, se le denomina:", options: ["a) Ataque de ransomware.", "b) Ataque DDoS.", "c) Ataque de phishing.", "d) Ataque de ingeniería social.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 93, text: "93. ¿Qué es el modelo OSI y cuántas capas tiene?", options: ["a) Un modelo de referencia para la comunicación en redes con 7 capas.", "b) Un modelo de referencia para la comunicación en redes con 6 capas.", "c) Un modelo de referencia para la comunicación en redes con 5 capas.", "d) Un modelo de referencia para la comunicación en redes con 4 capas.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 94, text: "94. Los protocolos de comunicación mas comúnmente utilizados en IoT (Internet of Things), son:", options: ["a) SNMP y RTP.", "b) SMTP y FTP.", "c) MQTT y CoAP.", "d) XMPT y AMPP.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 95, text: "95. ¿Qué se conoce como NGN?", options: ["a) New Generation Network, que es una red basada en paquetes.", "b) New Global Network, que es una red basada en circuitos.", "c) Network Generation Node, que es una red basada en conmutación de mensajes.", "d) Next Generation Network, que es una red basada en paquetes.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 96, text: "96. La función principal de una MCU (Multipoint Control Unit) en una red H.323, es:", options: ["a) Proporcionar enrutamiento de paquetes de datos en una red de comunicaciones IP.", "b) Coordinar y gestionar conferencias de video y audio entre múltiples participantes.", "c) Gestionar la seguridad extremo a extremo de la comunicación.", "d) Ofrecer servicios de almacenamiento en la nube para datos de comunicación.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 97, text: "97. La técnica de multiplexación fundamental para la eficiencia espectral en las redes móviles 4G LTE es:", options: ["a) FDMA (Frequency Division Multiple Access).", "b) TDMA (Time Division Multiple Access).", "c) CDMA (Code Division Multiple Access).", "d) OFDMA (Orthogonal Frequency Division Multiple Access).", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 98, text: "98. La caracteristica de la tecnología 5G que permite la implementación de redes privadas y la segmentación de red (network slicing) es:", options: ["a) El uso de frecuencias más altas.", "b) Una arquitectura basada en software y virtualización.", "c) Un mayor ancho de banda.", "d) La compatibilidad con tecnologías anteriores.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 99, text: "99. Los sistemas de videoconferencia son especialmente sensibles al 'jitter'. ¿Qué es?", options: ["a) Una interrupción en la señal.", "b) Una ráfaga de pérdida de información.", "c) Una variabilidad en el tiempo de llegada de los paquetes de datos.", "d) Un tipo de codificación.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 100, text: "100. El estándar de ITU-T que se utiliza para videoconferencia sobre redes IP es:", options: ["a) H.320", "b) H.261", "c) H.323", "d) H.264", "e) Dejar en blanco."], correctIndex: 2 },
+
+            // --- PREGUNTAS DE RESERVA ---
+            { id: 101, text: "Reserva 1. Acorde al IETF RFC 3720, el formato de un identificador IQN (ISCSI Qualified Name), siendo 'aaaa-mm' el año y el mes de adquisición del dominio, es:", options: ["a) iqn.aaaa-mm.naming-authority:nombre-único", "b) eui.aaaa-mm.naming-authority:nombre-único", "c) iqn.naming-authority.aaaa-mm:nombre-único", "d) eui.naming-authority.aaaa-mm:nombre-único", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 102, text: "Reserva 2. En relación con UML, ¿cuál de las siguientes opciones NO es una característica de MOF?", options: ["a) Se utiliza para definir la estructura de metamodelos.", "b) Es un estándar de la OMG.", "c) XMI es el formato estándar basado en XML para transmisión y almacenamiento de modelos OML.", "d) La definición que incluye se limita al metamodelo UML.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 103, text: "Reserva 3. Las BER (Basic Encoding Rules):", options: ["a) Están definidas en el estándar ITU-T X.660", "b) Están definidas en el estándar ITU-T X.690", "c) Están definidas en el estándar ITU-T X.960", "d) Están definidas en el estándar ITU-T X.990", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 104, text: "Reserva 4. El aprendizaje profundo (deep learning) es una rama del aprendizaje automático... ¿Cuál de las siguientes NO es una biblioteca usada para operar con redes neuronales?", options: ["a) Keras.", "b) AutomaticDL.", "c) TensorFlow.", "d) PyTorch.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 105, text: "Reserva 5. ¿Cuál de los siguientes es el token de seguridad definido en las especificaciones Web Services Security (WS-Security) para el uso de certificados X.509?", options: ["a) Username Token.", "b) Binary Security Token.", "c) Certificate Token.", "d) X.509 Certificate Token.", "e) Dejar en blanco."], correctIndex: 1 }
+        ];
+
+        const CACHE_KEY = 'quizState_A2_2024';
+
+        let state = {
+            answers: {}, 
+            timeRemaining: questionsData.length * 60,
+            isFinished: false,
+            isPaused: false,
+            highestQuestionAnswered: 0
+        };
+
+        let timerInterval = null;
+
+        function init() {
+            const totalQ = questionsData.length;
+            document.getElementById('start-q-count').innerText = totalQ;
+            document.getElementById('start-time-limit').innerText = totalQ;
+
+            const savedState = localStorage.getItem(CACHE_KEY);
+            if (savedState) {
+                state = JSON.parse(savedState);
+                if (state.isFinished) {
+                    showFinalModal();
+                } else {
+                    document.getElementById('modal-start').classList.add('hidden');
+                    document.getElementById('header').classList.remove('hidden');
+                    document.getElementById('main-container').classList.remove('hidden');
+                    
+                    const btnPause = document.getElementById('btn-pause');
+                    if (state.isPaused) {
+                        btnPause.innerText = "Reanudar";
+                        document.getElementById('main-container').style.opacity = "0.2";
+                        document.getElementById('main-container').style.pointerEvents = "none";
+                    } else {
+                        btnPause.innerText = "Pausar";
+                        document.getElementById('main-container').style.opacity = "1";
+                        document.getElementById('main-container').style.pointerEvents = "auto";
+                        startTimer();
+                    }
+                    
+                    updateHeader();
+                    renderQuiz();
+                }
+            } else {
+                renderQuiz();
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem(CACHE_KEY, JSON.stringify(state));
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!state.isPaused && !state.isFinished) {
+                    state.timeRemaining--;
+                    updateHeader();
+                    saveState();
+                    if (state.timeRemaining <= 0) {
+                        finishTest();
+                    }
+                }
+            }, 1000);
+        }
+
+        function togglePause() {
+            state.isPaused = !state.isPaused;
+            const btn = document.getElementById('btn-pause');
+            
+            if (state.isPaused) {
+                btn.innerText = "Reanudar";
+                document.getElementById('main-container').style.opacity = "0.2";
+                document.getElementById('main-container').style.pointerEvents = "none";
+                clearInterval(timerInterval);
+            } else {
+                btn.innerText = "Pausar";
+                document.getElementById('main-container').style.opacity = "1";
+                document.getElementById('main-container').style.pointerEvents = "auto";
+                startTimer();
+            }
+            saveState();
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function startTest() {
+            document.getElementById('modal-start').classList.add('hidden');
+            document.getElementById('header').classList.remove('hidden');
+            document.getElementById('main-container').classList.remove('hidden');
+            startTimer();
+            updateHeader();
+        }
+
+        function renderQuiz(reviewMode = false) {
+            const container = document.getElementById('main-container');
+            container.innerHTML = '';
+
+            let questionsToRender = [...questionsData];
+
+            if (reviewMode) {
+                questionsToRender.sort((a, b) => {
+                    const ansA = state.answers[a.id];
+                    const ansB = state.answers[b.id];
+                    const isCorrectA = ansA !== undefined && ansA === a.correctIndex;
+                    const isCorrectB = ansB !== undefined && ansB === b.correctIndex;
+                    return (isCorrectA === isCorrectB) ? 0 : isCorrectA ? 1 : -1;
+                });
+            }
+
+            questionsToRender.forEach((q) => {
+                const isAnswered = state.answers[q.id] !== undefined;
+                const selectedOption = state.answers[q.id];
+                const isBlank = selectedOption === 4;
+                const isCorrect = selectedOption === q.correctIndex;
+
+                let html = `<div class="question-card" id="q-${q.id}">
+                                <div class="question-title">${q.text}</div>`;
+                
+                q.options.forEach((opt, optIndex) => {
+                    let classes = "option";
+                    if (isAnswered) {
+                        classes += " disabled";
+                        if (optIndex === q.correctIndex) classes += " correct";
+                        if (optIndex === selectedOption && !isCorrect && !isBlank) classes += " wrong";
+                        if (optIndex === selectedOption && isBlank) classes += " blank";
+                    }
+
+                    html += `<div class="${classes}" ${!isAnswered ? `onclick="selectOption(${q.id}, ${optIndex})"` : ''}>
+                                ${opt}
+                             </div>`;
+                });
+
+                if (isAnswered) {
+                    let feedbackClass = isCorrect ? "feedback-correct" : "feedback-wrong";
+                    let feedbackText = isCorrect ? "¡Respuesta correcta!" : 
+                                      (isBlank ? "Dejada en blanco." : "Respuesta incorrecta.");
+                    if (!isCorrect) {
+                        feedbackText += `<br>La respuesta correcta es: <strong>${q.options[q.correctIndex]}</strong>`;
+                    }
+                    html += `<div class="feedback show ${feedbackClass}">${feedbackText}</div>`;
+                }
+
+                html += `</div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        function selectOption(questionId, optionIndex) {
+            if (state.isFinished || state.answers[questionId] !== undefined) return;
+            
+            state.answers[questionId] = optionIndex;
+            
+            if (questionId > state.highestQuestionAnswered) {
+                state.highestQuestionAnswered = questionId;
+            }
+
+            saveState();
+            updateHeader();
+            renderQuiz();
+
+            if (Object.keys(state.answers).length === questionsData.length) {
+                setTimeout(finishTest, 1000);
+            }
+        }
+
+        function updateHeader() {
+            let correct = 0, wrong = 0, blank = 0;
+            const total = questionsData.length;
+            const answeredCount = Object.keys(state.answers).length;
+
+            for (const qId in state.answers) {
+                const q = questionsData.find(x => x.id == qId);
+                const ans = state.answers[qId];
+                if (ans === 4) {
+                    blank++;
+                } else if (ans === q.correctIndex) {
+                    correct++;
+                } else {
+                    wrong++;
+                }
+            }
+
+            const pending = total - answeredCount;
+            
+            let score = 0;
+            if (state.highestQuestionAnswered > 0) {
+                score = ((correct - (wrong / 3)) / state.highestQuestionAnswered) * 100;
+            }
+            score = Math.max(0, score);
+
+            const notaColor = score >= 50 ? '#2ecc71' : '#e74c3c'; // Umbral de aprobado ajustado a 50 para exámenes grandes
+            const timerColor = state.timeRemaining < 300 ? '#e74c3c' : '#f39c12';
+
+            document.getElementById('stat-correct').innerHTML = `Acertadas: <span style="color: #2ecc71;">${correct}</span>`;
+            document.getElementById('stat-wrong').innerHTML = `Falladas: <span style="color: #e74c3c;">${wrong}</span>`;
+            document.getElementById('stat-blank').innerText = `En blanco: ${blank}`;
+            document.getElementById('stat-score').innerHTML = `Nota: <span style="color: ${notaColor};">${score.toFixed(2)}</span>`;
+            document.getElementById('stat-pending').innerText = `Pendientes: ${pending}`;
+            
+            document.getElementById('stat-timer').innerHTML = `<span style="color: ${timerColor};">⏱</span> ${formatTime(state.timeRemaining)}`;
+
+            return { correct, wrong, blank, score };
+        }
+
+        function finishTest() {
+            state.isFinished = true;
+            clearInterval(timerInterval);
+            
+            questionsData.forEach(q => {
+                if (state.answers[q.id] === undefined) {
+                    state.answers[q.id] = 4;
+                    if (q.id > state.highestQuestionAnswered) {
+                        state.highestQuestionAnswered = q.id;
+                    }
+                }
+            });
+
+            saveState();
+            showFinalModal();
+        }
+
+        function showFinalModal() {
+            const stats = updateHeader();
+            localStorage.setItem('score_test-a2-2024', stats.score.toFixed(2));
+            const modal = document.getElementById('modal-end');
+            const statusEl = document.getElementById('final-status');
+            const scoreEl = document.getElementById('final-score');
+            
+            modal.classList.remove('hidden');
+            
+            if (stats.score >= 50) {
+                statusEl.innerText = "¡APROBADO!";
+                statusEl.style.color = "#27ae60";
+            } else {
+                statusEl.innerText = "SUSPENSO";
+                statusEl.style.color = "#c0392b";
+            }
+            
+            scoreEl.innerText = stats.score.toFixed(2);
+            document.getElementById('final-stats').innerHTML = 
+                `Acertadas: ${stats.correct} | Falladas: ${stats.wrong} | En blanco: ${stats.blank}`;
+        }
+
+        function resetTest() {
+            if (confirm("¿Seguro que quieres reiniciar? Se perderá todo el progreso.")) {
+                localStorage.removeItem(CACHE_KEY);
+                localStorage.removeItem('score_test-a2-2024');
+                state = {
+                    answers: {}, 
+                    timeRemaining: questionsData.length * 60,
+                    isFinished: false,
+                    isPaused: false,
+                    highestQuestionAnswered: 0
+                };
+                
+                if (timerInterval) clearInterval(timerInterval);
+                
+                document.getElementById('modal-end').classList.add('hidden');
+                document.getElementById('header').classList.add('hidden');
+                document.getElementById('main-container').classList.add('hidden');
+                document.getElementById('modal-start').classList.remove('hidden');
+                
+                document.getElementById('btn-pause').innerText = "Pausar";
+                document.getElementById('main-container').style.opacity = "1";
+                document.getElementById('main-container').style.pointerEvents = "auto";
+                document.getElementById('btn-pause').style.display = 'inline-block';
+                document.getElementById('btn-finish').style.display = 'inline-block';
+                
+                updateHeader();
+                renderQuiz();
+            }
+        }
+
+        function reviewAnswers() {
+            document.getElementById('modal-end').classList.add('hidden');
+            document.getElementById('header').classList.remove('hidden');
+            
+            document.querySelector('.controls').style.display = 'grid'; 
+            
+            document.getElementById('btn-pause').style.display = 'none';
+            document.getElementById('btn-finish').style.display = 'none';
+            
+            renderQuiz(true);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
