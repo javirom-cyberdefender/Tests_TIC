@@ -220,9 +220,7 @@
         function init() {
             const totalQ = questionsData.length;
             document.getElementById('start-q-count').innerText = totalQ;
-            
-            const minutos = Math.ceil((totalQ * 54) / 60);
-            document.getElementById('start-time-limit').innerText = minutos;
+            document.getElementById('start-time-limit').innerText = totalQ;
 
             const savedState = localStorage.getItem(CACHE_KEY);
             if (savedState) {
@@ -253,7 +251,7 @@
                 renderQuiz();
             }
         }
-
+        
         function saveState() {
             localStorage.setItem(CACHE_KEY, JSON.stringify(state));
         }
