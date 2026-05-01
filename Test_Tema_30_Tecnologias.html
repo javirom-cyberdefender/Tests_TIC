@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Interactivo - Tema 30: Tecnologías de sistemas de la información</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; color: #333; }
+        header { position: sticky; top: 0; width: 100%; background-color: #2c3e50; color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
+        .stats { display: flex; gap: 15px; font-size: 14px; font-weight: bold; flex-wrap: wrap; align-items: center;}
+        .stats span { background: #34495e; padding: 5px 10px; border-radius: 5px; }
+        #stat-timer { font-size: 14px; }
+        .controls { display: flex; align-items: center; }
+        .controls button { background-color: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-left: 10px; font-weight: bold; transition: background-color 0.2s;}
+        .controls button:hover { background-color: #c0392b; }
+        .controls button.btn-pause { background-color: #f39c12; }
+        .controls button.btn-pause:hover { background-color: #d68910; }
+        .controls button.btn-menu { background-color: #27ae60; }
+        .controls button.btn-menu:hover { background-color: #219653; }
+        #main-container { padding: 20px; max-width: 800px; margin: 20px auto 50px auto; transition: opacity 0.3s;}
+        .question-card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .question-title { font-weight: bold; margin-bottom: 15px; font-size: 16px; white-space: pre-wrap; }
+        .option { display: block; padding: 10px 15px; border: 2px solid #ecf0f1; border-radius: 5px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; background: #fafafa;}
+        .option:hover:not(.disabled) { border-color: #bdc3c7; background: #f0f3f4; }
+        .option.disabled { cursor: not-allowed; opacity: 0.7; }
+        .option.correct { background-color: #d4edda; border-color: #28a745; color: #155724; }
+        .option.wrong { background-color: #f8d7da; border-color: #dc3545; color: #721c24; }
+        .option.blank { background-color: #e2e3e5; border-color: #6c757d; color: #383d41; }
+        .feedback { margin-top: 15px; padding: 15px; border-radius: 5px; display: none; font-weight: bold; }
+        .feedback.show { display: block; }
+        .feedback-correct { background-color: #d4edda; color: #155724; border-left: 5px solid #28a745; }
+        .feedback-wrong { background-color: #f8d7da; color: #721c24; border-left: 5px solid #dc3545; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+        .modal-content { background: white; padding: 30px; border-radius: 8px; max-width: 500px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin: 0 15px;}
+        .modal-content h2 { margin-top: 0; }
+        .modal-content button { background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; font-weight: bold;}
+        .modal-content button:hover { background-color: #2980b9; }
+        .hidden { display: none !important; }
+        @media (max-width: 768px) {
+            header { flex-direction: column; padding: 10px; gap: 8px;}
+            .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; width: 100%; }
+            .stats span { font-size: 11px; padding: 6px 2px; text-align: center; margin: 0; white-space: nowrap;}
+            .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 100%; }
+            .controls button { margin: 0; width: 100%; font-size: 13px; padding: 10px 4px;}
+        }
+    </style>
+</head>
+<body>
+    <header id="header" class="hidden">
+        <div class="stats">
+            <span id="stat-correct">Acertadas: <span style="color: #2ecc71;">0</span></span>
+            <span id="stat-wrong">Falladas: <span style="color: #e74c3c;">0</span></span>
+            <span id="stat-blank">En blanco: 0</span>
+            <span id="stat-score">Nota: 0.00</span>
+            <span id="stat-pending">Pendientes: 0</span>
+            <span id="stat-timer">⏱ 00:00</span>
+        </div>
+        <div class="controls">
+            <button id="btn-pause" class="btn-pause" onclick="togglePause()">Pausar</button>
+            <button id="btn-finish" onclick="finishTest()">Finalizar</button>
+            <button onclick="resetTest()">Reiniciar</button>
+            <button class="btn-menu" onclick="window.location.href='index.html'">Menú de Tests</button>
+        </div>
+    </header>
+
+    <div id="main-container" class="hidden"></div>
+
+    <div id="modal-start" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Tema 30 - Tecnologías de sistemas de la información</h2>
+            <p>El cuestionario consta de <strong id="start-q-count">0</strong> preguntas.</p>
+            <p>Tienes un tiempo límite de <strong id="start-time-limit">0</strong> minutos para completarlo.</p>
+            <button onclick="startTest()">INICIAR TEST</button>
+        </div>
+    </div>
+
+    <div id="modal-end" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 id="final-status">RESULTADO</h2>
+            <h1 id="final-score" style="font-size: 48px; margin: 10px 0;">0.00</h1>
+            <p id="final-stats"></p>
+            <button onclick="resetTest()">Reiniciar Test</button>
+            <button onclick="reviewAnswers()" style="background-color: #8e44ad;">Revisar Respuestas</button>
+            <button onclick="window.location.href='index.html'" style="background-color: #27ae60;">Volver al Menú</button>
+        </div>
+    </div>
+
+    <script>
+        const questionsData = [
+            // --- Preguntas 2018 ---
+            { id: 1, text: "En el contexto de la tecnología ASP.NET, indique la afirmación correcta respecto a “Razor”:", options: ["a) Es una interfaz común de acceso a múltiples bases de datos usando SQL.", "b) Es una sintaxis de programación usada para crear páginas web dinámicas.", "c) Es un framework ORM (Object/Relational Mapping) que permite el desarrollo de aplicaciones de software orientadas a datos.", "d) Es un lenguaje de programación para el desarrollo de scripts en el lado del cliente (navegador).", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 2, text: "¿Qué es Docker?", options: ["a) Hypervisor nativo o bare-metal (se ejecuta directamente sobre el hardware).", "b) Sistema de virtualización de contenedores (virtualización a nivel de sistema operativo).", "c) Emulador (ejecución de aplicaciones sobre arquitecturas de procesador diferentes).", "d) Simulador de carga de bases de datos relacionales.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 3, text: "¿Qué define el estándar WSDL del W3C?", options: ["a) Un esquema XML para sindicación de contenidos a través de lectores RSS.", "b) Una gramática XML para describir la interfaz de un servicio web.", "c) Pautas de Accesibilidad al Contenido en la Web.", "d) WSDL no es un estándar del W3C.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 4, text: "¿Qué es SAML?", options: ["a) Un estándar abierto que define un esquema XML para el intercambio de datos de autenticación y autorización.", "b) Variante de UML especializada en el modelado de máquinas de estado.", "c) Lenguaje para la especificación de conjuntos de pruebas de software.", "d) Motor de enrutamiento y mediación basado en reglas que provee una implementación basada en objetos Java.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 5, text: "¿Qué elemento estructural puede referenciarse en un archivo XML para facilitar su validación?", options: ["a) XPath.", "b) XSLT.", "c) DTD.", "d) XERCES.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 6, text: "Dentro del marco del entorno de desarrollo PHP, identificar cuál de las siguientes sentencias NO es una característica de este entorno de desarrollo:", options: ["a) PHP es open-source.", "b) PHP permite aplicar técnicas de programación orientada a objetos.", "c) El código PHP se ejecuta en el cliente.", "d) Es multiplataforma.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 7, text: "¿Cuál de los siguientes NO es un sistema de gestión de contenidos (CMS)?", options: ["a) LifeRay.", "b) WebDav.", "c) Drupal.", "d) SharePoint.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 8, text: "¿Cuál de las siguientes afirmaciones es INCORRECTA?", options: ["a) JavaScript es un lenguaje de programación interpretado.", "b) Los applets Java se ejecutan en el cliente.", "c) PHP es un lenguaje de programación que se puede incrustar en una página HTML.", "d) JSP es una tecnología que permite ejecutar código JAVA en páginas HTML en el cliente.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 9, text: "Dado un fichero de texto, se quieren obtener todas las líneas que no contengan la palabra “examen”. ¿Con qué herramienta de Linux podría hacerse esta acción?", options: ["a) find.", "b) grep.", "c) locate.", "d) which.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 10, text: "¿Qué es MongoDB?", options: ["a) Es una base de datos NoSQL de código abierto basada en documentos tipo JSON.", "b) Es un almacén de estructuras de datos en memoria, usado como base de datos, caché y bróker de mensajería.", "c) Es una extensión de PostgreSQL para el tratamiento de información geográfica.", "d) Es una base de datos relacional de código abierto, compatible con Oracle.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 11, text: "Se quiere desarrollar un nuevo portal web con el gestor de contenidos Drupal que funciona con PHP, y debe decidir en qué entorno desplegarlo entre dos disponibles: 1) Apache sobre Linux, 2) IIS sobre Windows. ¿Cuál de estos entornos admite PHP?", options: ["a) Sólo Apache-Linux, porque PHP no funciona con IIS-Windows.", "b) Sólo IIS-Windows, porque PHP no funciona con Apache-Linux.", "c) Cualquiera de los dos entornos, ambos son compatibles con PHP.", "d) PHP es un lenguaje de marcas que se interpreta en el navegador, por lo que no influye el entorno del servidor web.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 12, text: "¿Cuál de los siguientes es un framework de programación gráfica en Java?", options: ["a) JAXP.", "b) Swing.", "c) XAML.", "d) JAWS", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 13, text: "Indique cuál de los siguientes es un framework Javascript:", options: ["a) JSF (JavaServer Faces).", "b) Express.", "c) Django.", "d) Haml.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 14, text: "¿Cual es el formato de la FACTURA-E?", options: ["a) Word firmado con firma OOXML.", "b) PDF firmado con firma PAdES.", "c) XML firmado con firma XAdES.", "d) EDIFACT.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 15, text: "En el ámbito del desarrollo de aplicaciones para dispositivos móviles, señale la respuesta INCORRECTA:", options: ["a) PhoneGap es un framework que se basa en la utilización de HTML, CSS y Javascript para construir aplicaciones híbridas.", "b) Xamarin permite el desarrollo de aplicaciones nativas iOS, Android y Windows con código compartido en lenguaje C#.", "c) XCode es un entorno de desarrollo de código abierto, creado por Google, para el desarrollo nativo de aplicaciones para Android.", "d) Swift es un lenguaje de programación de código abierto, creado por Apple, que permite diseñar apps para iOS.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 16, text: "En las aplicaciones web, respecto de la validación de datos de entrada basada en Javascript y otros lenguajes de scripting en el navegador del usuario, ¿cuál de las siguientes afirmaciones es INCORRECTA?", options: ["a) Permite aumentar la eficiencia al reducir las llamadas al servidor.", "b) Tiene como ventaja que el desarrollador puede garantizar la seguridad implementando las validaciones exclusivamente en el navegador.", "c) No impide ataques de tipo Cross-site scripting (XSS).", "d) Es posible implementarla aunque no se use HTML5.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 17, text: "¿Cuál de las afirmaciones respecto a las DLL en el sistema operativo Windows es INCORRECTA?", options: ["a) Las DLL permiten compartir código común entre diferentes programas.", "b) Al modificar una DLL, los programas que la usan deben recompilarse.", "c) Es posible que un programa deje de funcionar correctamente después de que se haya modificado una DLL que dicho programa usa.", "d) Las DLL que un programa usa se vinculan de forma dinámica al programa cuando éste se ejecuta.", "e) Dejar en blanco."], correctIndex: 1 },
+
+            // --- Preguntas 2020 (Senado) ---
+            { id: 18, text: "Según el algoritmo de la criptomoneda Bitcoin basada en Blockchain, ¿cuál es el máximo número de Bitcoins que podrían existir?", options: ["a) 15 millones", "b) 21 millones", "c) Tantos como posibles mineros de Bitcoins", "d) No hay un máximo, el número es infinito", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 19, text: "Indique cuánta memoria ocupa en Java una variable de tipo básico char:", options: ["a) 1 byte", "b) 2 bytes", "c) 3 bytes", "d) 4 bytes", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 20, text: "Dado el siguiente código Java, indique cuál sería la salida por consola:\npublic class Incrementos {\n  public static void main(String[] args) throws Exception {\n    int j = 5; int k = j++;\n    System.out.println(\"j vale: \" + j + \", k vale: \" + k);\n  }\n}", options: ["a) j vale: 5, k vale: 5", "b) j vale: 5, k vale: 6", "c) j vale: 6, k vale: 5", "d) j vale: 6, k vale: 6", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 21, text: "En Java versión 9, ¿cuál de las siguientes palabras reservadas puede aplicarse a los métodos de un interfaz (interface)?", options: ["a) private", "b) abstract", "c) static", "d) Todas las anteriores", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 22, text: "Indique cuál de los siguientes términos NO se corresponde a un IDE para el desarrollo de código en lenguaje Java:", options: ["a) Eclipse", "b) NetBeans", "c) BlueJ", "d) OpenIDE", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 23, text: "En Java Enterprise Edition, indique a qué corresponden las siglas “JMS”:", options: ["a) Java Message Service", "b) Java Message Source", "c) Java Management Service", "d) Java Management Suppot", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 24, text: "Indique qué anotación de Spring se utiliza para resolver y realizar inyección de dependencias:", options: ["a) @Dependency", "b) @Autowired", "c) @Bean", "d) @Component", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 25, text: "Indique a qué clase pertenece el filtro necesario para activar Spring Security en el fichero web.xml:", options: ["a) org.springframework.web.filter.DelegatingFilterProxy", "b) org.springframework.web.filter.SpringSecurityFilter", "c) org.springframework.web.filter.SecurityFilter", "d) org.springframework.web.filter.ContextLoaderFilter", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 26, text: "Indique cuál de los siguientes términos se corresponde con un framework de seguridad en Java que se considera una alternativa a Spring Security:", options: ["a) Apache Shiro", "b) Apache Kafka", "c) Apache Rya", "d) Apache Storm", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 27, text: "Indique cuál de los siguientes NO es un componente del núcleo hibernate:", options: ["a) Mapping", "b) Criteria", "c) Query", "d) Transaction", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 28, text: "En hibernate, indique cuál de los siguientes elementos se mapea a una propiedad de tipo java.util.Collection:", options: ["a) <set>", "b) <list>", "c) <bag>", "d) <map>", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 29, text: "Indique qué componente de PrimeFaces le permite mostrar sugerencias en tiempo real al usuario mientras teclea en una caja de texto:", options: ["a) AccordionPanel", "b) AutoComplete", "c) InputTextArea", "d) AjaxRequest", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 30, text: "Indique cuál de los siguientes NO es un método HTTP válido usado en los servicios web REST:", options: ["a) PUSH", "b) DELETE", "c) PATCH", "d) POST", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 31, text: "Si desea implementar un servicio REST utilizando Spring, indique cuál de las siguientes anotaciones se usa para definir un manejador para un determinado patrón de URLs para el método GET:", options: ["a) @Handler", "b) @RequestHandler", "c) @GetHandler", "d) @GetMapping", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 32, text: "Indique cuáles son las principales anotaciones utilizadas para implementar un enpoint de servicios web utilizando JAX-WS:", options: ["a) javax.jws.WebService y javax.jws.WebMethod", "b) javax.jws.WebService y javax.jws.Method", "c) javax.jaxws.WebService y javax.jaxws.WebMethod", "d) javax.jaxws.Service y javax.jaxws.Method", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 33, text: "Indique cuál de las siguientes es una etiqueta HTML5 válida:", options: ["a) <photo>", "b) <audio>", "c) <rssfeed>", "d) <scope>", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 34, text: "Indique qué etiqueta HTML utilizaría para mostrar el contenido de una página web dentro de una zona de otra página distinta:", options: ["a) <a>", "b) <area>", "c) <iframe>", "d) <dialog>", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 35, text: "Indique cuál de los siguientes términos se corresponde con un conocido Framework de Javascript:", options: ["a) React", "b) OpenJS", "c) jSelect", "d) jAngular", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 36, text: "En diseño web adaptativo, indique cómo se llaman las expresiones lógicas que permiten mostrar unos estilos u otros en función del dispositivo donde se esté visualizando la página web:", options: ["a) adapted stylesheets", "b) responsive stylesheets", "c) CSS3 responsive extensions (CRE)", "d) media queries", "e) Dejar en blanco."], correctIndex: 3 },
+
+            // --- Preguntas 2020 (Congreso) ---
+            { id: 37, text: "¿Cuál de los siguientes no es un entorno integrado de desarrollo en Java?", options: ["a) Eclipse", "b) Netbeans", "c) JIntegra", "d) IntelliJ", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 38, text: "Entre los siguientes ¿Cuál no es un principio de diseño en una arquitectura orientada a servicios?", options: ["a) Bajo acoplamiento", "b) Abstracción", "c) Interoperabilidad", "d) Portabilidad", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 39, text: "¿Qué estándar designa un registro para publicar y encontrar información sobre servicios web en una arquitectura orientada a servicios (SOA)?", options: ["a) WSDL", "b) SOAP", "c) UDDI", "d) REST", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 40, text: "XML y HTML5 se caracterizan porque ambos:", options: ["a) Son conformes a SOAP.", "b) Se basan en HTTP.", "c) Son lenguajes de marcado.", "d) Se apoyan en Javascript.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 41, text: "Para declarar en Java una clase genérica para implementar un árbol de elementos, la declaración correcta sería:", options: ["a) public template <T> class Arbol", "b) public class Arbol <T>", "c) public class Arbol <Template class T>", "d) template <class T> public class Arbol", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 42, text: "Los servicios web de tipo REST:", options: ["a) Mantienen su información de estado en el contexto después de la ejecución del servicio.", "b) Se invocan mediante peticiones HTTP de tipo GET, PUT, POST y DELETE.", "c) Están siempre basados en el estándar XML.", "d) Son completamente seguros si utilizan HTTPS.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 43, text: "JavaServer Faces:", options: ["a) Se usan como un frontal para servlets y JavaServer Pages.", "b) Es la evolución del framework Struts.", "c) Es un framework MVC para aplicaciones web.", "d) Es el sustituto de las JavaServer Pages.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 44, text: "¿Qué tipo de contenedor se gestionan las páginas JSP y servlets de una aplicación Java desplegada en un servidor de aplicaciones JEE?", options: ["a) Contenedor web.", "b) Contenedor EJB.", "c) Contenedor JMX.", "d) Contenedor JDBC.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 45, text: "¿Qué opción ilustra mejor el soporte de servicios web en Java EE?", options: ["a) Los servidores de aplicaciones Java EE disponen de un contenedor de servicios web específico para interactuar con otros servicios web.", "b) Java EE proporciona las API y las herramientas necesarias para diseñar de forma rápida y efectiva, desarrollar, probar e implementar servicios web.", "c) El soporte de servicios web es parte de Java SE y, como tal, también está disponible en Java EE.", "d) El servidor Java EE proporciona descriptores de implementación especiales para servicios web.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 46, text: "¿Cuál de las siguientes tecnologías forma parte de un servidor certificado Java EE full platform pero no de uno Java EE web profile?", options: ["a) JavaServer Pages.", "b) JavaServer Faces.", "c) Java Persistence API.", "d) JavaMail .", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 47, text: "El lenguaje de programación al que se realiza el primer nivel de translación en el framework Microsoft .NET y el Common Language Infraestructure es:", options: ["a) Microsoft ByteCode.", "b) CIL", "c) CLRK", "d) CLS", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 48, text: "Windows Communication Foundation es:", options: ["a) Un marco para la creación de aplicaciones orientadas a servicios .", "b) Una librería para la captura y manipulación de paquetes de red.", "c) La evolución de la tecnología ADO.NET para ser utilizado en aplicaciones .NET", "d) Ninguna de las anteriores.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 49, text: "El módulo CSS3 que permite determinar el tamaño del dispositivo y, en función de ello, ajustar la visualización de la aplicación móvil se denomina:", options: ["a) Object queries.", "b) Responsive DOM queries.", "c) Media queries .", "d) Screen design queries.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 50, text: "El Resource Description Framework (RDF) es:", options: ["a) Un estándar para publicación de catálogos de servicios web.", "b) Un marco de interoperabilidad de registros bibliográficos.", "c) Un conjunto de especificaciones para la descripción de metadatos .", "d) Un framework enmarcado en la arquitectura JEE.", "e) Dejar en blanco."], correctIndex: 2 },
+
+            // --- Preguntas 2020 (Castilla La Mancha) ---
+            { id: 51, text: "Cuál de los siguientes tipos de datos, no son tipos primitivos en JAVA:", options: ["a) Byte", "b) Double", "c) Char", "d) Array", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 52, text: "En .NET, cuál de las siguientes afirmaciones es correcta:", options: ["a) Los tipos de datos primitivos se encuentran definidos en el espacio de nombres “System”", "b) System.double es un tipo de dato numérico primitivo", "c) Para poder utilizar el espacio de nombre “System” de manera directa, hay que invocarlo con la sentencia “using”", "d) Todas son correctas.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 53, text: "En los servicios Web, el WSDL es:", options: ["a) Web Services Download Language. Utilizado para indicar el punto de descarga de los datos del servicio web.", "b) Web Services Description Language. Utilizado para describir los servicios web.", "c) Web Services Definition Location. Utilizado para describir el servicio web publicado.", "d) Web Services Definition Log. Es el fichero donde se encuentran los logs de las peticiones que ha recibido el servicio web.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 54, text: "En los servicios web, el medio de transporte de mensajes entre aplicaciones, puede utilizar el protocolo de transferencia:", options: ["a) HTTP", "b) FTP", "c) SMTP", "d) Todas son correctas", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 55, text: "Utilizando JavaScript en una página web, indica la respuesta incorrecta:", options: ["a) Para iniciar una función de JavaScript durante la carga de la página se puede utilizar “onload” en la etiqueta “body” de la página web.", "b) Las funciones de javascript se definen entre las etiquetas <script> y </script>.", "c) No se puede incluir código JavaScript en la página web, debe hacerse en un archivo adjunto con extensión “js”.", "d) Los comandos de una función de JavaScript se delimitan por los signos “{ “y “}”.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 56, text: "En html 5 la etiqueta video no permite:", options: ["a) El atributo “controls” que muestra los controles estándar de HTML 5 para video en una página web", "b) Especificar en centímetros el ancho y alto del video con los atributos height y width.", "c) reproducir el video automáticamente, para ello es necesario incluir el atributo “autoplay”", "d) indicar diferentes formatos de un video utilizando la etiqueta “source”.", "e) Dejar en blanco."], correctIndex: 1 },
+
+            // --- Preguntas 2020 (Tecnologías Emergentes) ---
+            { id: 57, text: "La mejora prevista que más aplicación práctica tendrá de la tecnología 5G es:", options: ["a) Que habrá más competencia de Asia (Huawei).", "b) Mejora el tiempo de latencia, lo que es una ventaja para, por ejemplo, el vehículo autónomo.", "c) Que habrá mejor cobertura en los pueblos y zonas aisladas.", "d) Que su velocidad es alrededor de 5 veces la de 4G.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 58, text: "Señala la incorrecta de las siguientes afirmaciones:", options: ["a) La criptografía postcuántica es la que usa algoritmos que corren en computadores cuánticos.", "b) La televisión 8K tiene cuatro veces más píxeles que la 4K.", "c) La diferencia entre Deep Learning y Machine Learning es que en la primera los algoritmos de aprendizaje no son supervisados por humanos.", "d) Las aplicaciones de movilidad como servicio (MaaS) como la app de la EMT son un ejemplo de servicio considerado en la tecnología SmartCity.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 59, text: "La principal diferencia entre la arquitectura blockchain y la de una DLT genérica es:", options: ["a) Que en la DLT se minan los bloques y en la blockchain no.", "b) Que la DLT es distribuida y la blockchain está concentrada en unos determinados nodos.", "c) Que blockchain sincroniza más frecuentemente el registro contable que la DLT.", "d) Que blockchain utiliza específicamente la arquitectura de cadena de bloques para la base de datos transaccional y la DLT puede utilizar otra distinta.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 60, text: "La propuesta de arquitectura de la criptomoneda Bitcoin surgió a raíz de:", options: ["a) Un paper publicado en Internet por un criptólogo muy reconocido llamado Satoshi Nakamoto", "b) Un RFC publicado en Internet por un científico desconocido", "c) Un paper publicado en Internet por una persona todavía a día de hoy desconocida de seudónimo Satoshi Nakamoto.", "d) El manifiesto Cypherpunk de Eric Hughes del año 1993", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 61, text: "Un blockchain se dice que es permisionado cuando:", options: ["a) Sólo determinados nodos conocidos pueden minar los bloques", "b) Cualquier nodo de la red puede minar los bloques", "c) El algoritmo de minado es el Proof of Work", "d) Hay que pedir permiso a una empresa para participar en la blockchain", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 62, text: "Solidity es:", options: ["a) Una implementación de un protocolo de consenso para Bitcoin", "b) Una blockchain permisionada para banca", "c) Un lenguaje para programar contratos inteligentes que incorpora la plataforma Ethereum", "d) Una solución de comunicaciones para sincronizar los blockchain en Cloud", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 63, text: "Uno de los principales inconvenientes del algoritmo Proof of Work es que:", options: ["a) Los nodos tienen que esperar un tiempo aleatorio para poder realizar el minado de bloques", "b) Hay que guardar anticipadamente en almacenamiento físico los posibles cálculos de hashes", "c) Utiliza algoritmos de cifrado en flujo en tiempo real y precisa del uso de tarjetas criptográficas", "d) Elevado uso de recursos computacionales.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 64, text: "Una bifurcación suave (soft fork):", options: ["a) Puede ser contenciosa o no", "b) Pueden coexistir nodos actualizados y no actualizados", "c) Se parte en dos blockchains distintas", "d) El fork tiene que estar programado con Java", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 65, text: "El criptojacking se puede considerar como:", options: ["a) Un malware como el ransomware, que te cifra información", "b) Un malware que te secuestra recursos del sistema para realizar tareas de minado.", "c) Un proyecto colaborativo de grid computing como el proyecto SETI", "d) Un mecanismo de consenso de la moneda Ripple.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 66, text: "Según el Reglamento General de Protección de Datos:", options: ["a) Las direcciones de las transacciones son datos de carácter personal porque según un dictamen emitido las claves públicas usadas para identificarlas lo son.", "b) Las blockchain no manejan ningún dato de carácter personal.", "c) Los nodos mineros son responsables del tratamiento desde el punto de vista jurídico.", "d) El nonce se puede considerar un dato de carácter personal de tipo biométrico.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 67, text: "Para implementar un proyecto de blockchain en la Administración:", options: ["a) Puedo utilizar cualquier tipo de blockchain permisionado o no permisionado ya que se me permite pagar gastos corrientes usando criptomonedas.", "b) Puedo usar directamente la autenticación en la blockchain usando las claves por ejemplo del DNI electrónico.", "c) Debo usar blockchain no permisionadas sin criptomonedas, por tanto, y claves públicas usando una PKI de tal modo que no se pueda asociar la clave pública con la identidad real del usuario.", "d) Debo implementar la blockchain con Ethereum siempre usando además SmartContracts.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 68, text: "El proyecto de Alastria en blockchain tiene como objetivo:", options: ["a) Servir de plataforma de crowdfunding.", "b) La gestión de identidades desde fuentes diversas.", "c) La mejora de la programación de Smart Contracts.", "d) El reemplazo de los algoritmos de consenso tradicionales.", "e) Dejar en blanco."], correctIndex: 1 }
+        ];
+
+        const CACHE_KEY = 'quizState_Tema_30_Tecnologias';
+        let state = {
+            answers: {}, 
+            timeRemaining: questionsData.length * 54, 
+            isFinished: false,
+            isPaused: false,
+            highestQuestionAnswered: 0
+        };
+
+        let timerInterval = null;
+
+        function init() {
+            const totalQ = questionsData.length;
+            document.getElementById('start-q-count').innerText = totalQ;
+            const minutos = Math.ceil((totalQ * 54) / 60);
+            document.getElementById('start-time-limit').innerText = minutos;
+
+            const savedState = localStorage.getItem(CACHE_KEY);
+            if (savedState) {
+                state = JSON.parse(savedState);
+                if (state.isFinished) {
+                    showFinalModal();
+                } else {
+                    document.getElementById('modal-start').classList.add('hidden');
+                    document.getElementById('header').classList.remove('hidden');
+                    document.getElementById('main-container').classList.remove('hidden');
+                    
+                    const btnPause = document.getElementById('btn-pause');
+                    if (state.isPaused) {
+                        btnPause.innerText = "Reanudar";
+                        document.getElementById('main-container').style.opacity = "0.2";
+                        document.getElementById('main-container').style.pointerEvents = "none";
+                    } else {
+                        btnPause.innerText = "Pausar";
+                        document.getElementById('main-container').style.opacity = "1";
+                        document.getElementById('main-container').style.pointerEvents = "auto";
+                        startTimer();
+                    }
+                    updateHeader();
+                    renderQuiz();
+                }
+            } else {
+                renderQuiz();
+            }
+        }
+
+        function saveState() { localStorage.setItem(CACHE_KEY, JSON.stringify(state)); }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!state.isPaused && !state.isFinished) {
+                    state.timeRemaining--;
+                    updateHeader();
+                    saveState();
+                    if (state.timeRemaining <= 0) { finishTest(); }
+                }
+            }, 1000);
+        }
+
+        function togglePause() {
+            state.isPaused = !state.isPaused;
+            const btn = document.getElementById('btn-pause');
+            if (state.isPaused) {
+                btn.innerText = "Reanudar";
+                document.getElementById('main-container').style.opacity = "0.2";
+                document.getElementById('main-container').style.pointerEvents = "none";
+                clearInterval(timerInterval);
+            } else {
+                btn.innerText = "Pausar";
+                document.getElementById('main-container').style.opacity = "1";
+                document.getElementById('main-container').style.pointerEvents = "auto";
+                startTimer();
+            }
+            saveState();
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function startTest() {
+            document.getElementById('modal-start').classList.add('hidden');
+            document.getElementById('header').classList.remove('hidden');
+            document.getElementById('main-container').classList.remove('hidden');
+            startTimer();
+            updateHeader();
+        }
+
+        function renderQuiz(reviewMode = false) {
+            const container = document.getElementById('main-container');
+            container.innerHTML = '';
+            let questionsToRender = [...questionsData];
+
+            if (reviewMode) {
+                questionsToRender.sort((a, b) => {
+                    const ansA = state.answers[a.id];
+                    const ansB = state.answers[b.id];
+                    const isCorrectA = ansA !== undefined && ansA === a.correctIndex;
+                    const isCorrectB = ansB !== undefined && ansB === b.correctIndex;
+                    return (isCorrectA === isCorrectB) ? 0 : isCorrectA ? 1 : -1;
+                });
+            }
+
+            questionsToRender.forEach((q, index) => {
+                const isAnswered = state.answers[q.id] !== undefined;
+                const selectedOption = state.answers[q.id];
+                const isBlank = selectedOption === 4;
+                const isCorrect = selectedOption === q.correctIndex;
+
+                let html = `<div class="question-card" id="q-${q.id}">
+                                <div class="question-title">${index + 1}. ${q.text}</div>`;
+                
+                q.options.forEach((opt, optIndex) => {
+                    let classes = "option";
+                    if (isAnswered) {
+                        classes += " disabled";
+                        if (optIndex === q.correctIndex) classes += " correct";
+                        if (optIndex === selectedOption && !isCorrect && !isBlank) classes += " wrong";
+                        if (optIndex === selectedOption && isBlank) classes += " blank";
+                    }
+                    html += `<div class="${classes}" ${!isAnswered ? `onclick="selectOption(${q.id}, ${optIndex})"` : ''}>${opt}</div>`;
+                });
+
+                if (isAnswered) {
+                    let feedbackClass = isCorrect ? "feedback-correct" : "feedback-wrong";
+                    let feedbackText = isCorrect ? "¡Respuesta correcta!" : (isBlank ? "Dejada en blanco." : "Respuesta incorrecta.");
+                    if (!isCorrect) { feedbackText += `<br>La respuesta correcta es: <strong>${q.options[q.correctIndex]}</strong>`; }
+                    html += `<div class="feedback show ${feedbackClass}">${feedbackText}</div>`;
+                }
+                html += `</div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        function selectOption(questionId, optionIndex) {
+            if (state.isFinished || state.answers[questionId] !== undefined) return;
+            state.answers[questionId] = optionIndex;
+            if (questionId > state.highestQuestionAnswered) { state.highestQuestionAnswered = questionId; }
+            saveState();
+            updateHeader();
+            renderQuiz();
+            if (Object.keys(state.answers).length === questionsData.length) { setTimeout(finishTest, 1000); }
+        }
+
+        function updateHeader() {
+            let correct = 0, wrong = 0, blank = 0;
+            const total = questionsData.length;
+            const answeredCount = Object.keys(state.answers).length;
+
+            for (const qId in state.answers) {
+                const q = questionsData.find(x => x.id == qId);
+                const ans = state.answers[qId];
+                if (ans === 4) { blank++; } 
+                else if (ans === q.correctIndex) { correct++; } 
+                else { wrong++; }
+            }
+
+            const pending = total - answeredCount;
+            let score = 0;
+            if (state.highestQuestionAnswered > 0) {
+                score = ((correct - (wrong / 3)) / state.highestQuestionAnswered) * 100;
+            }
+            score = Math.max(0, score);
+
+            const notaColor = score >= 30 ? '#2ecc71' : '#e74c3c'; 
+            const timerColor = state.timeRemaining < 300 ? '#e74c3c' : '#f39c12';
+
+            document.getElementById('stat-correct').innerHTML = `Acertadas: <span style="color: #2ecc71;">${correct}</span>`;
+            document.getElementById('stat-wrong').innerHTML = `Falladas: <span style="color: #e74c3c;">${wrong}</span>`;
+            document.getElementById('stat-blank').innerText = `En blanco: ${blank}`;
+            document.getElementById('stat-score').innerHTML = `Nota: <span style="color: ${notaColor};">${score.toFixed(2)}</span>`;
+            document.getElementById('stat-pending').innerText = `Pendientes: ${pending}`;
+            document.getElementById('stat-timer').innerHTML = `<span style="color: ${timerColor};">⏱</span> ${formatTime(state.timeRemaining)}`;
+
+            return { correct, wrong, blank, score };
+        }
+
+        function finishTest() {
+            state.isFinished = true;
+            clearInterval(timerInterval);
+            questionsData.forEach(q => {
+                if (state.answers[q.id] === undefined) {
+                    state.answers[q.id] = 4;
+                    if (q.id > state.highestQuestionAnswered) { state.highestQuestionAnswered = q.id; }
+                }
+            });
+            saveState();
+            showFinalModal();
+        }
+
+        function showFinalModal() {
+            const stats = updateHeader();
+            localStorage.setItem('score_test-tema-30', stats.score.toFixed(2));
+            const modal = document.getElementById('modal-end');
+            const statusEl = document.getElementById('final-status');
+            const scoreEl = document.getElementById('final-score');
+            
+            modal.classList.remove('hidden');
+            if (stats.score >= 30) {
+                statusEl.innerText = "¡APROBADO!";
+                statusEl.style.color = "#27ae60";
+            } else {
+                statusEl.innerText = "SUSPENSO";
+                statusEl.style.color = "#c0392b";
+            }
+            scoreEl.innerText = stats.score.toFixed(2);
+            document.getElementById('final-stats').innerHTML = `Acertadas: ${stats.correct} | Falladas: ${stats.wrong} | En blanco: ${stats.blank}`;
+        }
+
+        function resetTest() {
+            if (confirm("¿Seguro que quieres reiniciar? Se perderá todo el progreso.")) {
+                localStorage.removeItem(CACHE_KEY);
+                localStorage.removeItem('score_test-tema-30');
+                state = {
+                    answers: {}, 
+                    timeRemaining: questionsData.length * 54,
+                    isFinished: false,
+                    isPaused: false,
+                    highestQuestionAnswered: 0
+                };
+                if (timerInterval) clearInterval(timerInterval);
+                document.getElementById('modal-end').classList.add('hidden');
+                document.getElementById('header').classList.add('hidden');
+                document.getElementById('main-container').classList.add('hidden');
+                document.getElementById('modal-start').classList.remove('hidden');
+                document.getElementById('btn-pause').innerText = "Pausar";
+                document.getElementById('main-container').style.opacity = "1";
+                document.getElementById('main-container').style.pointerEvents = "auto";
+                document.getElementById('btn-pause').style.display = 'inline-block';
+                document.getElementById('btn-finish').style.display = 'inline-block';
+                updateHeader();
+                renderQuiz();
+            }
+        }
+
+        function reviewAnswers() {
+            document.getElementById('modal-end').classList.add('hidden');
+            document.getElementById('header').classList.remove('hidden');
+            document.querySelector('.controls').style.display = 'grid'; 
+            document.getElementById('btn-pause').style.display = 'none';
+            document.getElementById('btn-finish').style.display = 'none';
+            renderQuiz(true);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
