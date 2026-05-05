@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Interactivo - Examen A2 GSI-PI 2019</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; color: #333; }
+        header { position: sticky; top: 0; width: 100%; background-color: #2c3e50; color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
+        .stats { display: flex; gap: 15px; font-size: 14px; font-weight: bold; flex-wrap: wrap; align-items: center;}
+        .stats span { background: #34495e; padding: 5px 10px; border-radius: 5px; }
+        #stat-timer { font-size: 14px; }
+        .controls { display: flex; align-items: center; }
+        .controls button { background-color: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-left: 10px; font-weight: bold; transition: background-color 0.2s;}
+        .controls button:hover { background-color: #c0392b; }
+        .controls button.btn-pause { background-color: #f39c12; }
+        .controls button.btn-pause:hover { background-color: #d68910; }
+        .controls button.btn-menu { background-color: #27ae60; }
+        .controls button.btn-menu:hover { background-color: #219653; }
+        #main-container { padding: 20px; max-width: 800px; margin: 20px auto 50px auto; transition: opacity 0.3s;}
+        .question-card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .question-title { font-weight: bold; margin-bottom: 15px; font-size: 16px; white-space: pre-wrap; }
+        .option { display: block; padding: 10px 15px; border: 2px solid #ecf0f1; border-radius: 5px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; background: #fafafa;}
+        .option:hover:not(.disabled) { border-color: #bdc3c7; background: #f0f3f4; }
+        .option.disabled { cursor: not-allowed; opacity: 0.7; }
+        .option.correct { background-color: #d4edda; border-color: #28a745; color: #155724; }
+        .option.wrong { background-color: #f8d7da; border-color: #dc3545; color: #721c24; }
+        .option.blank { background-color: #e2e3e5; border-color: #6c757d; color: #383d41; }
+        .feedback { margin-top: 15px; padding: 15px; border-radius: 5px; display: none; font-weight: bold; }
+        .feedback.show { display: block; }
+        .feedback-correct { background-color: #d4edda; color: #155724; border-left: 5px solid #28a745; }
+        .feedback-wrong { background-color: #f8d7da; color: #721c24; border-left: 5px solid #dc3545; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+        .modal-content { background: white; padding: 30px; border-radius: 8px; max-width: 500px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin: 0 15px;}
+        .modal-content h2 { margin-top: 0; }
+        .modal-content button { background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; font-weight: bold;}
+        .modal-content button:hover { background-color: #2980b9; }
+        .hidden { display: none !important; }
+        @media (max-width: 768px) {
+            header { flex-direction: column; padding: 10px; gap: 8px;}
+            .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; width: 100%; }
+            .stats span { font-size: 11px; padding: 6px 2px; text-align: center; margin: 0; white-space: nowrap;}
+            .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 100%; }
+            .controls button { margin: 0; width: 100%; font-size: 13px; padding: 10px 4px;}
+        }
+    </style>
+</head>
+<body>
+    <header id="header" class="hidden">
+        <div class="stats">
+            <span id="stat-correct">Acertadas: <span style="color: #2ecc71;">0</span></span>
+            <span id="stat-wrong">Falladas: <span style="color: #e74c3c;">0</span></span>
+            <span id="stat-blank">En blanco: 0</span>
+            <span id="stat-score">Nota: 0.00</span>
+            <span id="stat-pending">Pendientes: 0</span>
+            <span id="stat-timer">⏱ 00:00</span>
+        </div>
+        <div class="controls">
+            <button id="btn-pause" class="btn-pause" onclick="togglePause()">Pausar</button>
+            <button id="btn-finish" onclick="finishTest()">Finalizar</button>
+            <button onclick="resetTest()">Reiniciar</button>
+            <button class="btn-menu" onclick="window.location.href='index.html'">Menú de Tests</button>
+        </div>
+    </header>
+
+    <div id="main-container" class="hidden"></div>
+
+    <div id="modal-start" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Examen A2 Convocatoria 2019 (GSI-PI)</h2>
+            <p>El cuestionario consta de <strong id="start-q-count">0</strong> preguntas.</p>
+            <p>Tienes un tiempo límite de <strong id="start-time-limit">0</strong> minutos para completarlo.</p>
+            <p style="font-size: 13px; color: #e74c3c;">*Nota: Las respuestas erróneas en este examen penalizan 1/4 de su valor según las bases de Promoción Interna.</p>
+            <button onclick="startTest()">INICIAR TEST</button>
+        </div>
+    </div>
+
+    <div id="modal-end" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 id="final-status">RESULTADO</h2>
+            <h1 id="final-score" style="font-size: 48px; margin: 10px 0;">0.00</h1>
+            <p id="final-stats"></p>
+            <button onclick="resetTest()">Reiniciar Test</button>
+            <button onclick="reviewAnswers()" style="background-color: #8e44ad;">Revisar Respuestas</button>
+            <button onclick="window.location.href='index.html'" style="background-color: #27ae60;">Volver al Menú</button>
+        </div>
+    </div>
+
+    <script>
+        const questionsData = [
+            { id: 1, text: "Según el artículo 4 de la Ley 6/2020, reguladora de determinados aspectos de los servicios electrónicos de confianza, el período de vigencia de los certificados electrónicos cualificados no será superior a:", options: ["a) Dos años.", "b) Tres años.", "c) Cinco años.", "d) Diez años.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 2, text: "Para el año 2025, el Plan España Digital 2025 establece entre sus metas:", options: ["a) Una cobertura del 100% de la población con más de 200 Mbps.", "b) El 100% del espectro radioeléctrico preparado para la tecnología 5G.", "c) El 80% de los servicios públicos disponibles en app móvil.", "d) Un 57% de las personas con competencias digitales básicas.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 3, text: "Respecto al bloqueo de datos regulado en el artículo 32, de la Ley 3/2018, de Protección de Datos Personales y garantia de los derechos digitales, se establece que:", options: ["a) El responsable del tratamiento estará obligado a bloquear los datos cuando proceda a su rectificación o supresión.", "b) El encargado del tratamiento estará obligado a bloquear los datos cuando proceda a su rectificación o supresión.", "c) El delegado de protección de datos estará obligado a bloquear los datos cuando proceda a su rectificación o supresión.", "d) La Agencia Española de Protección de Datos (AEPD) estudiará la pertinencia del bloqueo de datos cuando proceda a su oposición, rectificación o supresión.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 4, text: "Según el artículo 5 del Reglamento (UE) 2016/679, relativo a la protección de las personas físicas en lo que respecta al tratamiento de datos personales y a la libre circulación de estos datos, ¿cuáles de los siguientes son principios relativos al tratamiento?", options: ["a) Limitación de la finalidad, minimización de datos y exactitud.", "b) Licitud, limitación del plazo de conservación y anonimización de datos.", "c) Integridad y confidencialidad, responsabilidad reactiva y pertinencia.", "d) Pertinencia, limitación de la finalidad y publicidad.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 5, text: "Conforme al artículo 30 de Ley 39/2015, del Procedimiento Administrativo Común de las Administraciones Públicas, siempre que por Ley o en el Derecho de la Unión Europea no se exprese otro cómputo, cuando los plazos se señalen por días, se entiende que éstos son:", options: ["a) Hábiles, excluyéndose del cómputo los sábados, los domingos y los declarados festivos.", "b) Naturales, excluyéndose del cómputo los domingos y los declarados festivos nacionales.", "c) Naturales, incluyendo en el cómputo los sábados, los domingos y los declarados festivos.", "d) Hábiles, incluyendo en el cómputo los sábados y los declarados festivos locales.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 6, text: "¿Qué establece la serie CCN-STIC-800?", options: ["a) Establece las configuraciones mínimas de seguridad de los diferentes elementos basados en la tecnología Windows.", "b) Establece las políticas y procedimientos adecuados para la implementación de las medidas contempladas en el Esquema Nacional de Seguridad.", "c) Establece el marco común de actuación en los procesos de acreditación, certificación TEMPEST, gestión de material de cifra y de cualquier otro campo que se considere.", "d) Establece las configuraciones mínimas de seguridad de un grupo de tecnologías concretas (HP-UX, SUN-SOLARIS, LINUX, equipos de comunicaciones...).", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 7, text: "Según el artículo 20 del Real Decreto 203/2021, por el que se aprueba el Reglamento de actuación y funcionamiento del sector público por medios electrónicos, ¿qué sistema de firma electrónica puede utilizar una Administración Pública en la actuación administrativa automatizada?", options: ["a) Firma electrónica basada en certificado electrónico cualificado de empleado público.", "b) Firma electrónica avanzada basada en certificado electrónico de empleado público.", "c) Firma electrónica basada en certificado electrónico cualificado de servidor.", "d) Sello electrónico de Administración Pública basado en certificado electrónico cualificado.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 8, text: "La Ley 19/2013, de transparencia, acceso a la información pública y buen gobierno, en su artículo 36 indica que en la composición de la Comisión de Transparencia y Buen Gobierno se incluye:", options: ["a) Un representante de la Abogacía del Estado.", "b) Un representante de la Intervención General de la Administración del Estado.", "c) Un representante de la Autoridad Independiente de Responsabilidad Fiscal.", "d) Un representante de la Secretaría de Estado de Políticas Públicas.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 9, text: "Indique cuál de las siguientes opciones NO se corresponde con uno de los objetivos incluidos dentro del IV Plan de Gobierno Abierto 2020-2024:", options: ["a) Integridad.", "b) Datos abiertos.", "c) Transparencia y rendición de cuentas.", "d) Participación.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 10, text: "Señale cómo es evaluado el Plan para la Igualdad entre mujeres y hombres en la Administración General del Estado, previsto en la Ley Orgánica 3/2007, para la igualdad efectiva de mujeres y hombres:", options: ["a) Anualmente por el Consejo de Ministros.", "b) Anualmente por la Agencia de Evaluación de Políticas Públicas y Calidad de los Servicios.", "c) Al final de cada legislatura por el Consejo de Ministros.", "d) Al final de cada legislatura por la Agencia de Evaluación de Políticas Públicas y Calidad de los Servicios.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 11, text: "¿Qué marco normativo regula actualmente los derechos de las personas con discapacidad y de su inclusión social?", options: ["a) Real Decreto Legislativo 1/2013.", "b) Real Decreto Legislativo 2/2010.", "c) Real Decreto Legislativo 1/2015.", "d) Real Decreto Legislativo 3/2011.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 12, text: "El portal que se presenta como punto de encuentro entre las administraciones, las empresas y los ciudadanos que forman parte del ecosistema de los datos abiertos en España es:", options: ["a) datos.gob.es", "b) aporta.gob.es", "c) datosabiertos.gob.es", "d) opendata.gob.es", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 13, text: "En referencia a la utilización del sistema Cl@ve, señale la afirmación FALSA con respecto a las entidades encargadas del sistema:", options: ["a) La Agencia Estatal de Administración Tributaria actuará como organismo principal responsable del sistema de acceso basado en Cl@ve ocasional (Cl@ve PIN).", "b) La Gerencia de Informática de la Seguridad Social actuará como organismo responsable del funcionamiento del sistema de acceso basado en Cl@ve permanente.", "c) La entidad encargada de realizar las funciones de almacenamiento y gestión de certificados electrónicos centralizados de usuarios para el sistema Cl@ve será la Dirección General de la Policía.", "d) La Dirección General de la Policía actuará como organismo principal responsable del sistema de Registro de usuarios de Cl@ve.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 14, text: "De las siguientes soluciones de administración electrónica puestas a disposición de las administraciones públicas españolas, ¿cuál NO se ofrece en modo cloud?", options: ["a) FACe-Punto General de Entrada de Facturas de la Administración General del Estado.", "b) ORVE - Oficina de Registro Virtual.", "c) Portafirmas de la Administración General del Estado.", "d) DIR3-Directorio Común de Unidades Orgánicas y Oficinas.", "e) Dejar en blanco.", "f) ANULADA (Respuesta oficial)."], correctIndex: 5 },
+            { id: 15, text: "¿Cómo se integra un nodo eIDAS en las Administraciones Públicas?", options: ["a) Para las Administraciones Públicas, la integración con el nodo eIDAS español se realiza a través del sistema Comprueb@.", "b) Para las Administraciones Públicas, la integración con el nodo eIDAS español se realiza a través del sistema @Firma.", "c) Para las Administraciones Públicas, la integración con el nodo eIDAS español se realiza a través del sistema V@lide.", "d) Para las Administraciones Públicas, la integración con el nodo eIDAS español se realiza a través del sistema Cl@ve.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 16, text: "El overcloking hace referencia a:", options: ["a) Técnica utilizada para aumentar la vida útil de una memoria DRAM.", "b) Técnica utilizada para aumentar la frecuencia de reloj de un componente electrónico.", "c) Técnica utilizada para aumentar la permanencia en caché de contenido estático en los balanceadores web.", "d) Técnica utilizada para aumentar la velocidad de giro del ventilador del procesador.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 17, text: "Indique cuál de los siguientes es un tipo de acceso a los sistemas de archivos en sistemas operativos.", options: ["a) Acceso Directo.", "b) Acceso Indirecto.", "c) Acceso Centralizado.", "d) Acceso Distribuido.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 18, text: "GNU es un sistema operativo de tipo:", options: ["a) Unix", "b) MacOS", "c) Windows", "d) ReactOS", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 19, text: "Indique cuál de las siguientes NO es una herramienta de trabajo colaborativo:", options: ["a) Trello", "b) Centreon", "c) Asana", "d) Slack", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 20, text: "¿Qué es Kotlin?", options: ["a) Una aplicación del entorno Linux KDE para edición de textos.", "b) Un lenguaje de órdenes y shell de Unix.", "c) Un lenguaje de programación compatible con el ecosistema Java.", "d) Un sistema gestor de base de datos no relacional.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 21, text: "Con relación a la tecnología Thunderbolt 4, determine la respuesta INCORRECTA:", options: ["a) Tiene un ancho de banda bidireccional de 30 Gbps.", "b) Permite la conexión de hasta 5 dispositivos Thunderbolt en un solo puerto.", "c) Es compatible con las tecnologías DisplayPort y PCIe.", "d) Puede ofrecer alimentación a otros dispositivos que sean compatibles.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 22, text: "El protocolo IP es un protocolo:", options: ["a) No orientado a conexión, Fiable.", "b) No orientado a conexión. No fiable.", "c) Orientado a conexión, Fiable.", "d) Orientado a conexión, No fiable.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 23, text: "¿En qué capa del modelo OSI se localizan los procesos de compresión de datos o la aplicación de protocolos criptográficos?", options: ["a) Capa de transporte.", "b) Capa de presentación.", "c) Capa de sesión.", "d) Capa de enlace.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 24, text: "En IPv4 una red de clase C tiene una dirección de broadcast:", options: ["a) x.x.x.255", "b) x.x.255.255", "c) 255.255.255.0", "d) x.255.255.255", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 25, text: "¿Cuál es la longitud de la cabecera de un paquete IPv6?", options: ["a) 64 bytes", "b) 128 bits", "c) 40 bytes", "d) 256 bits", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 26, text: "En relación con la arquitectura software basada en contenedores y microservicios, seleccione la opción INCORRECTA:", options: ["a) Es una arquitectura que trabaja la fragmentación de la aplicación en componentes menores llamados microservicios.", "b) Los contenedores permiten que los procesos se ejecuten de forma aislada, lo que permite que partes del software sean administrados por diferentes equipos o, incluso, lenguajes.", "c) Se trata de una arquitectura orientada a servicios, los cuales deben tener un alto nivel de acoplamiento e interdependencia para facilitar el mantenimiento.", "d) OpenShift es una plataforma de contenedores de Kubernetes empresarial con operaciones automatizadas integrales.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 27, text: "¿Qué empresa desarrolló y diseñó la plataforma kubernetes?", options: ["a) RedHat", "b) IBM", "c) Google", "d) Microsoft", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 28, text: "Según Ken Schwaber, uno de sus creadores, el ciclo de vida de SCRUM es:", options: ["a) Una mejora del ciclo de vida en espiral.", "b) Una mejora del ciclo de vida basado en prototipos.", "c) Una mejora del ciclo de vida incremental e iterativo.", "d) Una mejora del ciclo de vida en V.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 29, text: "Según Métrica v3, en un diagrama de Gantt los hitos son un tipo de actividad que:", options: ["a) No representa trabajo ni tiene recursos asociados.", "b) No representa trabajo pero tiene recursos asociados.", "c) Representa trabajo pero no tiene recursos asociados.", "d) Representa trabajo y tiene recursos asociados.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 30, text: "Respecto al método Kanban:", options: ["a) Fue creado exclusivamente para potenciar la eficiencia de los desarrollos de software y reducir el número de errores.", "b) Permite visualizar el flujo de trabajo mediante un tablero organizado en un número de columnas variable según el proyecto.", "c) Permite visualizar el flujo de trabajo mediante un tablero organizado en un número de columnas fijas, que vienen definidas por el propio método.", "d) Proporciona funciones algorítmicas para la estimación del equipo de trabajo necesario en un proyecto, así como para la duración de sus fases y tareas.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 31, text: "¿Cuál de los siguientes NO está considerado como un método vinculado con la metodología ágil de desarrollo software?", options: ["a) Scrum.", "b) Programación Extrema (XP).", "c) Desarrollo de software Lean.", "d) Modelo en V.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 32, text: "Señale cuál de las siguientes es una de las prácticas incluidas en la metodología Métrica v3:", options: ["a) Pruebas de aceptación.", "b) Diagrama de Gantt.", "c) Diagrama de componentes.", "d) Diagrama E/R extendido.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 33, text: "De acuerdo con la IEEE STD 830-1998 (IEEE Recommended Practice for Software Requirements Specifications) la definición de requisitos debe ser:", options: ["a) Completa, consistente, inequívoca, extrapolable, identificable, priorizable, flexible y verificable.", "b) Completa, consistente, inequívoca, extrapolable, identificable, priorizable, inmutable y verificable.", "c) Completa, consistente, inequívoca, correcta, identificable, priorizable, inmutable y verificable.", "d) Completa, consistente, inequívoca, correcta, identificable, priorizable, modificable y verificable.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 34, text: "En el ciclo de vida de desarrollo de software, el documento ERS (Especificación de Requisitos Software) se elabora en la fase de:", options: ["a) Análisis del Sistema.", "b) Construcción del Sistema.", "c) Pruebas del Sistema.", "d) Mantenimiento del Sistema.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 35, text: "Según Métrica v3, en el modelo Entidad/Relación extendido, ¿cuál de las siguientes afirmaciones es cierta?", options: ["a) Se trata de una técnica de representación de datos muy ligada a la tecnología existente.", "b) Una relación débil es aquélla cuya existencia depende de la existencia de otra relación.", "c) Se centra en los datos y en el procesamiento que los transforma teniendo en cuenta que éste sea eficiente.", "d) Se pueden definir restricciones sobre los atributos, según las cuales un atributo puede ser univaluado o/y obligatorio.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 36, text: "Según Métrica v3, relativo al modelo Entidad/Relación extendido, ¿cuál de las siguientes NO es una regla que deban cumplir las entidades?", options: ["a) Todas las ocurrencias de un tipo de entidad deben tener los mismos atributos.", "b) Tienen que tener existencia propia.", "c) Deben tener atributos disjuntos.", "d) Cada ocurrencia de un tipo de entidad debe poder distinguirse de las demás.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 37, text: "Una relación está en Tercera Forma Normal:", options: ["a) Si está en 2FN y todos sus atributos principales dependen directamente de la clave primaria.", "b) Si está en 2FN y no contenga grupos repetitivos.", "c) Si está en 2FN y todos sus atributos no principales dependen directamente de la clave primaria.", "d) Si está en 2FN y no contiene dependencias multivaluadas a no ser que sean triviales.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 38, text: "El modelo ACID es un conjunto de principios de diseño de bases de datos para garantizar la fiabilidad y validez de los datos. Las siglas corresponden a:", options: ["a) A: Authentication, C: Consistency, I: Isolation, D: Durability.", "b) A: Atomicity, C: Consistency, I: Integrity, D: Durability.", "c) A: Atomicity, C: Consistency, I: Isolation, D: Durability.", "d) A: Availability, C: Consistency, I: Isolation, D: Durability.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 39, text: "Los algoritmos de radix y shell son algoritmos de:", options: ["a) Ordenación", "b) Búsqueda", "c) Negocio", "d) Inserción", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 40, text: "En los grafos, a la hora de clasificarlos y realizar mediciones sobre ellos, ¿cuál es la métrica que mide el nivel de agrupamiento de los nodos?", options: ["a) Camino característico.", "b) Densidad.", "c) Coeficiente de agrupamiento.", "d) Grado medio.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 41, text: "¿Cuál de los siguientes es un elemento de un diagrama de flujo de datos (DFD)?", options: ["a) Almacén de clases.", "b) Flujo de diálogo.", "c) Entidades Internas.", "d) Flujo de Objetos.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 42, text: "El objetivo de un diseño de software con una buena calidad estructural será:", options: ["a) Maximizar cohesión y minimizar acoplamiento.", "b) Maximizar cohesión y maximizar acoplamiento.", "c) Minimizar cohesión y minimizar acoplamiento.", "d) Minimizar cohesión y maximizar acoplamiento.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 43, text: "Por la forma de almacenar los ficheros, ¿qué tipos de Sistemas de Control de Versiones (CVS) existen?", options: ["a) Transaccionales y No Transaccionales.", "b) Centralizados y Distribuidos.", "c) Jerárquicos y Relacionales.", "d) Dinámicos y Estáticos.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 44, text: "De entre las siguientes, ¿cuál NO es un repositorio de artefactos?", options: ["a) Jfrog Artifactory", "b) Apache Archiva", "c) Nexus Repository", "d) Blue Prism", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 45, text: "De acuerdo con Métrica v3, ¿cuál de las siguientes NO se considera un tipo de prueba a las que debe someterse un Sistema de Información para verificar su calidad?", options: ["a) Pruebas de Componente.", "b) Pruebas de Sistema.", "c) Pruebas de Integración.", "d) Pruebas de Regresión.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 46, text: "De las siguientes, ¿cuál es la práctica de programación en la que se diseñan las pruebas antes que el código fuente que realiza la función?", options: ["a) TDD-Test-Driven Development (Desarrollo guiado por pruebas).", "b) SDD-Stress-Driven Development (Desarrollo guiado por estrés).", "c) ATD-Advanced-Test Development (Desarrollo de pruebas avanzado).", "d) BUD-Bottom-Up Development (Desarrollo de abajo a arriba).", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 47, text: "El mantenimiento del software que se aborda cuando existen modificaciones que afectan a los entornos en los que el sistema opera, se denomina:", options: ["a) Mantenimiento correctivo.", "b) Mantenimiento preventivo.", "c) Mantenimiento adaptativo.", "d) Mantenimiento perfectivo.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 48, text: "En relación al Lenguaje de Modelado Unificado (UML) versión 2.5.1, señale la opción INCORRECTA:", options: ["a) Está respaldado por el OMG (Object Management Group).", "b) Es un lenguaje gráfico para visualizar, especificar, construir y documentar un sistema.", "c) Entre sus tipos de diagramas se encuentra el Diagrama de Historias de Usuario.", "d) El Diagrama de Despliegue modela la arquitectura en tiempo de ejecución de un sistema, mostrando los elementos hardware.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 49, text: "Los patrones de comportamiento definidos por el \"Gang of Four\" posibilitan:", options: ["a) Tratar la manera en que los objetos se conectan con otros objetos, los combinan y forman estructuras mayores, asegurando estabilidad en las conexiones.", "b) Tratar a los objetos que manejan tipos particulares de acciones y llamadas entre los diferentes objetos dentro de un programa.", "c) Definir cómo puede crearse un objeto aislando los detalles de la creación del objeto.", "d) Proveer de interfaces unificadas para hacer de intermediarios entre un cliente y una interfaz.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 50, text: "Según la clasificación de los patrones de diseño GoF (Gang of Four), ¿cuál sería la afirmación correcta?", options: ["a) Prototype es un patrón de comportamiento.", "b) Singleton es un patrón de comportamiento.", "c) Composite es un patrón de creación.", "d) Proxy es un patrón de estructura.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 51, text: "En relación a la arquitectura Java EE/Jakarta EE, ¿qué servicio está relacionado con la autenticación y autorización?", options: ["a) JAXP", "b) JASS", "c) JAAS", "d) JavaSSL", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 52, text: "En la arquitectura de capas de Java EE/Jakarta EE, un servlet se sitúa en:", options: ["a) La capa web.", "b) La capa cliente.", "c) La capa de negocio.", "d) La capa de datos.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 53, text: "¿Cuál de las siguientes es una plataforma de código abierto para compilar aplicaciones para iOS, Android y Windows con .NET?", options: ["a) Xamarin", "b) JDK", "c) CLRNET", "d) EclipseNET", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 54, text: "Son marcos para crear aplicaciones web en ASP.NET:", options: ["a) Formularios Web Forms, ASP.NET MVC y ASP.NET Web Pages.", "b) ASP.NET MVC, Formularios Web Forms y Application Server Pages.", "c) Formularios Web Forms, HTML5 y ASP.NET MVC.", "d) ASP.NET Web Pages, ASP.NET MVC y ASP.NET Templates.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 55, text: "¿Qué lenguaje derivado de XML se usa para describir Servicios Web, proporcionando información al cliente sobre cómo utilizar dichos servicios?", options: ["a) SOAP", "b) WSDL", "c) UDDI", "d) JAXP", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 56, text: "En .NET, para liberar memoria se utiliza el recolector de basura o garbage collector. En relación a lo anterior, señale la sentencia correcta.", options: ["a) Para que el garbage collector comience a ejecutarse es necesario realizar una llamada al método GC.Collect.", "b) Para que el garbage collector comience a ejecutarse es necesario realizar una llamada a la función VirtualAlloc de Windows.", "c) Para que el garbage collector comience a ejecutarse es necesario realizar una llamada al método Object.Finalize.", "d) En la mayoría de los casos no es necesario llamar a ningún método, dado que el garbage collector se ejecuta continuamente.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 57, text: "En relación con el desarrollo en JavaScript, ¿a qué hace referencia el acrónimo MEAN?", options: ["a) Mes MySQL, E es Eclipse, A es Apache y Nes Node.Js", "b) Mes MariaDB, E es Eclipse, A es ActiveX y N es Node.Js", "c) Mes MongoDB, E es Express, A es AngularJs y N es Node.Js", "d) Mes Microsoft, E es Entity Framework, A es ActiveX y Nes.NET", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 58, text: "Según el modelo de calidad de McCall, ¿qué factor mide el esfuerzo requerido para modificar un producto software en funcionamiento?", options: ["a) Portabilidad", "b) Reusabilidad", "c) Interoperabilidad", "d) Flexibilidad", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 59, text: "La herramienta SonarQube cubre código escrito en diversos lenguajes, entre los que se encuentra:", options: ["a) Groovy", "b) Shell script", "c) PL/SQL", "d) Eiffel", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 60, text: "El artículo 3.1 del Real Decreto 1112/2018, sobre accesibilidad de los sitios web y aplicaciones para dispositivos móviles del sector público, indica como ámbito objetivo de aplicación:", options: ["a) Solo a sitios web para dispositivos móviles del sector público y otros obligados.", "b) Sitios web, independientemente del dispositivo empleado para acceder a ellos, y las aplicaciones para dispositivos móviles de los organismos del sector público y otros obligados.", "c) Sitios web, únicamente cuando se accede a ellos desde dispositivos móviles, y las aplicaciones para dispositivos móviles del sector público y otros obligados.", "d) Solo a las aplicaciones para dispositivos móviles del sector público y otros obligados.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 61, text: "¿Cuál de las siguientes características de una web NO se ajusta a los principios de accesibilidad del consorcio W3C?", options: ["a) Toda la funcionalidad que está disponible con ratón también está disponible con teclado.", "b) Contiene breves descripciones del contenido no textual, como archivos de audio y vídeo.", "c) Sólo hay un camino para encontrar las páginas relevantes en un conjunto de páginas web.", "d) El color no se utiliza como única forma de transmitir información o identificar el contenido.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 62, text: "¿Cuál de las siguientes Bases de Datos NoSQL es orientada a columnas?", options: ["a) MongoDB", "b) Redis", "c) Hbase", "d) Neo4J", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 63, text: "¿Cuáles de los siguientes son esquemas utilizados para modelar la base de datos de un Data Mart o un Data Warehouse?", options: ["a) Estrella y copo de nieve.", "b) Distribuido y estrella.", "c) Copo de nieve y paralelo.", "d) Satélite y cubo.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 64, text: "En el sistema operativo Windows 10 existen distintos procesos de autenticación. Indique cuál NO es uno de ellos:", options: ["a) DirectAccess", "b) Kerberos", "c) Windows Hello", "d) Microsoft Passport", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 65, text: "En un sistema GNU/Linux, ¿qué comando indica cuánto tiempo hace que el sistema está activo?", options: ["a) inittime", "b) ontime", "c) time", "d) uptime", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 66, text: "¿En qué sistema operativo NO podría instalar paquetes .rpm de forma nativa?", options: ["a) openSUSE", "b) CentOS", "c) Tizen", "d) Debian", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 67, text: "Indique cuál de los siguientes es un sistema de gestión de bases de datos relacional compatible con MySQL y PostgreSQL creada para la nube:", options: ["a) Google Cloud SQLVirtual.", "b) Amazon Aurora.", "c) Microsoft Azure SQLStone.", "d) IBM Cloud CoverDB.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 68, text: "De entre las siguientes opciones indique que par \"lenguaje - instrucción\" NO es correcto:", options: ["a) DDL - alter", "b) DML - delete", "c) DDL - drop", "d) DML - grant", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 69, text: "Indique cuál de las siguientes es una herramienta para monitorización de instalaciones y servidores:", options: ["a) Cherrytree", "b) Jira", "c) Zabbix", "d) Asana", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 70, text: "En aplicación del teorema de CAP, en un sistema distribuido de almacenamiento de datos sólo pueden garantizarse al mismo tiempo dos de las siguientes características:", options: ["a) Consistencia, Disponibilidad, Tolerancia al Particionamiento.", "b) Consistencia, Atomicidad, Tolerancia al Particionamiento.", "c) Consistencia, Autenticación, Tolerancia al Particionamiento.", "d) Consistencia, Atomicidad, Durabilidad.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 71, text: "De entre los siguientes RAID, ¿cuál de ellos NO tiene tolerancia a fallos?", options: ["a) RAID 0", "b) RAID 1", "c) RAID 5", "d) RAID 6", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 72, text: "Entre las herramientas de control de versiones de software se encuentra:", options: ["a) CRS", "b) HIT", "c) Subcase", "d) Mercurial", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 73, text: "De los siguientes, ¿qué tecnología posibilita una gestión de la configuración automatizada?", options: ["a) IBM Cloudant", "b) AWS Command Line Interface", "c) Microsoft Bit.Do", "d) Red Hat Ansible", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 74, text: "¿Qué versión de ITIL incluye como pieza clave el Sistema de Valor del Servicio (SVS)?", options: ["a) ITIL versión 1.0", "b) ITIL versión 2.0", "c) ITIL versión 3.0", "d) ITIL versión 4.0", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 75, text: "De entre los siguientes, el sistema de almacenamiento que realiza el acceso a nivel de bloque de bits es:", options: ["a) CRS (Cloud Remote Storage)", "b) NAS (Network Attached Storage)", "c) SAN (Storage Area Network)", "d) MSN (Massive Storage Network)", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 76, text: "El término HBA hace referencia a:", options: ["a) Un tipo de conmutador utilizado en la implementación de redes HVPLS.", "b) Una tarjeta hardware utilizada para conectar sistemas de almacenamiento SAN.", "c) Un multiplexor que permite la conversión de la transmisión de datos de paralelo a serie.", "d) Una tarjeta de red que posibilita tecnología inalámbrica de ondas milimétricas.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 77, text: "¿Qué tipo de fibra óptica proporciona un mayor ancho de banda?", options: ["a) Fibra monomodo.", "b) Fibra multimodo.", "c) Fibra polarizada.", "d) Fibra oscura.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 78, text: "En relación con los sistemas de transmisión por satélite, ¿cuáles son las características de la órbita geoestacionaria u órbita GEO?", options: ["a) Se sitúa en una franja amplia que varía entre los 160 y los 2.000 kilómetros de altura.", "b) Se halla entre los 2.000 y 36.000 kilómetros de altura y su periodo orbital tiene un promedio de 12 horas.", "c) Se sitúa a 35.786 kilómetros de la superficie terrestre y su periodo orbital es de 23 horas 56 minutos y 4 segundos.", "d) Se halla a más de 36.000 kilómetros de altura y tiene un periodo orbital de más de 24 horas.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 79, text: "De acuerdo al estándar ISO/IEC 11801, indique la respuesta correcta sobre la relación núcleo/revestimiento de las fibras multimodo OM3:", options: ["a) Tiene una relación de 9/125 μm.", "b) Tiene una relación 40/125 µm.", "c) Tiene una relación 50/125 μm.", "d) Tiene una relación 62.5/125 μm.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 80, text: "Dentro de los algoritmos de enrutamiento, ¿cuál de los siguientes es un algoritmo de estado de enlace?", options: ["a) OSPF (Open Short Path First).", "b) BGP (Border Gateway Protocol).", "c) ASIS (Asynchronous System to Intermediate System).", "d) VIP (Vector Information Protocol).", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 81, text: "En relación a los dispositivos de interconexión de redes locales, un bridge o puente:", options: ["a) Recibe paquetes y selecciona la ruta óptima para reenviar el paquete a través de la red.", "b) Permite conectar distintos segmentos de red que pueden tener igual o diferente tecnología.", "c) Tiene un interfaz de red diferente por cada red a la que están conectados.", "d) No entiende el formato de la trama, ni las direcciones físicas, copia cualquier señal eléctrica.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 82, text: "La herramienta NMAP:", options: ["a) Determina la ruta a un destino introducido mediante el envío de paquetes ICMP echo.", "b) Enumera los mapas de red que conforman el cableado estructurado de un edificio.", "c) Permite descubrir redes, equipos y puertos en una red y realizar auditorías de seguridad.", "d) Muestra toda la información disponible en el adaptador o tarjeta de red empleado.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 83, text: "Según el estándar TIA-942, señale la opción correcta respecto a la certificación TIER:", options: ["a) Los centros de datos con TIER I deben tener una disponibilidad 99,691%.", "b) Los centros de datos con TIER II deben tener una disponibilidad 99,841%.", "c) Los centros de datos con TIER III deben tener una disponibilidad 99,982%.", "d) Los centros de datos con TIER IV deben tener una disponibilidad 99,997%.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 84, text: "En el ámbito de la calidad de servicio (QoS) en redes, la medida Jitter se refiere a:", options: ["a) La fluctuación del retardo o variación de tiempo en la llegada de paquetes al destino.", "b) El tiempo mínimo que el operador asegura que la red estará en funcionamiento.", "c) El ancho de banda mínimo que el operador garantiza al usuario dentro de su red.", "d) El valor medio del retardo de ida y vuelta de los paquetes.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 85, text: "¿Qué es el smishing?", options: ["a) Es una técnica de encriptación simétrica, basada en el algoritmo de Dijkstra.", "b) Es un grupo conformado por dispositivos que operan en la misma red privada virtual (RPV).", "c) Es un parámetro que permite medir la calidad de las comunicaciones basadas en VoIP.", "d) Es un tipo de ciberataque basado en el envío de SMS.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 86, text: "En relación a redes MPLS, señale la INCORRECTA:", options: ["a) Es una tecnología de conmutación de paquetes.", "b) Soporta envío de paquetes tanto unicast como multicast.", "c) Tiene una cabecera de 32 bits.", "d) Utiliza el LGP (Label Gateway Protocol) como protocolo de distribución de etiquetas.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 87, text: "¿Qué algoritmo de cifrado se conoce también como Rijndael?", options: ["a) AES", "b) E0", "c) RC4", "d) TDES", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 88, text: "¿En qué estándar se basa la tecnología \"VLAN tagging\" o \"redes VLAN etiquetadas\"?", options: ["a) IEEE 802.13", "b) IEEE 802.1Q", "c) IEEE 802.11ax", "d) IEEE 802.10n", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 89, text: "El protocolo IPv6 define un espacio de direcciones de:", options: ["a) 64 bits", "b) 128 bits", "c) 192 bits", "d) 256 bits", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 90, text: "Constrained Application Protocol (CoAP) es un protocolo utilizado en entornos IoT. ¿Cuál de las siguientes opciones NO se considera una de sus características?", options: ["a) Está diseñado para aplicaciones Machine-to-Machine.", "b) Está definido en el RFC-7252.", "c) Está diseñado exclusivamente para redes de alta potencia y sin pérdidas.", "d) Está basado en el modelo REST.", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 91, text: "¿Cuál de las siguientes NO es una tecnología de acceso cableada?", options: ["a) XDSL", "b) xBro", "c) HFC", "d) FTTx", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 92, text: "¿Cuál es el organismo encargado de resolver los conflictos que se susciten en relación con las obligaciones existentes en virtud de la Ley 9/2014, General de Telecomunicaciones?", options: ["a) La Comisión del Mercado de las Telecomunicaciones.", "b) La Comisión Nacional de los Mercados y la Competencia.", "c) Organismo de Reguladores Españoles de Comunicaciones Electrónicas.", "d) Organismo de Reguladores Europeos de Comunicaciones Electrónicas.", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 93, text: "Indique cuál es uno de los códec especificado por la ITU-T para la codificación de voz en sistemas de Voz sobre IP:", options: ["a) T.808", "b) G.729", "c) H.265.1", "d) H.810", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 94, text: "De las siguientes, ¿qué técnica se usa para medir la calidad de la conversación en sistemas de Voz sobre IP?", options: ["a) Comparison of Speech Quality (CSQ).", "b) Latency Rate Measure (LRM).", "c) Algorithm Stream Rate (ASR).", "d) Mean Opinion Score (MOS).", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 95, text: "En un sistema de comunicaciones móviles, si un dispositivo es propiedad de una organización y gestionado en su totalidad por la misma, es puesto a disposición del usuario exclusivamente para el desempeño de sus funciones profesionales, entonces estamos hablando de un modelo:", options: ["a) BYOD", "b) COPE", "c) COBO", "d) CYOD", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 96, text: "En relación con los dispositivos móviles, ¿a qué hace referencia el término MDM?", options: ["a) A una solución tecnológica que permite la gestión de dispositivos móviles corporativos.", "b) A un protocolo de seguridad para dispositivos móviles corporativos.", "c) A un sistema tipo CYOD para comunicaciones móviles.", "d) A una solución de almacenamiento en la nube para dispositivos móviles.", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 97, text: "De entre los siguientes mecanismos de seguridad en redes inalámbricas, señale el que actualmente ofrece mayor protección frente a ataques:", options: ["a) WEP", "b) WEP2", "c) WPA", "d) WPA3", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 98, text: "Señale la afirmación INCORRECTA respecto Wi-Fi 6.", options: ["a) Utiliza tecnología MIMO.", "b) La utilización del canal de 160 MHz aumenta el ancho de banda ofreciendo un mayor rendimiento con baja latencia.", "c) El tiempo de activación objetivo (TWT) mejora la eficiencia de la red.", "d) Reduce la sobrecarga y la latencia gracias a la incorporación de la tecnología WDM.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 99, text: "De entre los siguientes, ¿cuál es un protocolo estándar para promover la compatibilidad y señalización en transmisiones de videoconferencia sobre redes IP?", options: ["a) H224", "b) OSPF", "c) ZOOM", "d) H323", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 100, text: "Señale la respuesta INCORRECTA respecto al protocolo SIP:", options: ["a) Está descrito en el RFC 2327.", "b) Es un protocolo de control de la capa de aplicación.", "c) Se basa en un modelo de transacción de solicitud/respuesta similar al de HTTP.", "d) Tanto la solicitud del cliente al servidor, como la respuesta del servidor al cliente se realiza mediante mensajes SIP.", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 101, text: "Reserva 1. ¿Cuál es la guía del CCN-STIC de configuración segura para Azure?", options: ["a) CCN-STIC-887A", "b) CCN-STIC-885D", "c) CCN-STIC-884A", "d) CCN-STIC-885A", "e) Dejar en blanco."], correctIndex: 3 },
+            { id: 102, text: "Reserva 2. ¿A partir de que versión del sistema operativo Android se incorporan las Notification Dots (puntos de notificación)?", options: ["a) Desde la 7.0", "b) Desde la 8.0", "c) Desde la 9.0", "d) Desde la 10.0", "e) Dejar en blanco."], correctIndex: 1 },
+            { id: 103, text: "Reserva 3. La RFC 3414 trata sobre el User-based Security Model (USM) en SNMP v3 y establece algunos protocolos de autenticación. ¿Cuál de los aquí expuestos es uno de ellos?", options: ["a) HMAC-MD5-106", "b) HMAC-MD5-54", "c) HMAC-MD5-96", "d) HMAC-MD5-196", "e) Dejar en blanco."], correctIndex: 2 },
+            { id: 104, text: "Reserva 4. ¿Cuál de los siguientes es un estándar relacionado con la documentación del software?", options: ["a) ISO/IEC/IEEE 26511:2018", "b) ISO/TS 22003:2013", "c) ISO 9000:2015", "d) ISO/IEC/IEEE 41062:2019", "e) Dejar en blanco."], correctIndex: 0 },
+            { id: 105, text: "Reserva 5. De acuerdo con la Agenda 2030, señale la respuesta correcta en relación con los Objetivos de Desarrollo Sostenible:", options: ["a) No son jurídicamente obligatorios. No obstante, se prevé que los países los adopten como propios y establezcan marcos nacionales para el logro de los 17 objetivos.", "b) Son juridicamente obligatorios para los países miembros de la Unión Europea. Anualmente deberán rendir cuentas sobre la consecución de los 17 objetivos en el seno de la Comisión Europea.", "c) Son jurídicamente obligatorios para los países miembros de la OCDE. Anualmente deberán rendir cuentas sobre la consecución de los 17 objetivos a través del Observatorio de la OCDE.", "d) Se establece un período de cinco años para que sean jurídicamente obligatorios. A partir de esa fecha deberán existir normativa nacional a fin de la consecución de los mismos.", "e) Dejar en blanco."], correctIndex: 0 }
+        ];
+
+        const CACHE_KEY = 'quizState_A2_PI_2019';
+        let state = {
+            answers: {}, 
+            timeRemaining: questionsData.length * 54, 
+            isFinished: false,
+            isPaused: false,
+            highestQuestionAnswered: 0
+        };
+
+        let timerInterval = null;
+
+        function init() {
+            const totalQ = questionsData.length;
+            document.getElementById('start-q-count').innerText = totalQ;
+            const minutos = Math.ceil((totalQ * 54) / 60);
+            document.getElementById('start-time-limit').innerText = minutos;
+
+            const savedState = localStorage.getItem(CACHE_KEY);
+            if (savedState) {
+                state = JSON.parse(savedState);
+                if (state.isFinished) {
+                    showFinalModal();
+                } else {
+                    document.getElementById('modal-start').classList.add('hidden');
+                    document.getElementById('header').classList.remove('hidden');
+                    document.getElementById('main-container').classList.remove('hidden');
+                    
+                    const btnPause = document.getElementById('btn-pause');
+                    if (state.isPaused) {
+                        btnPause.innerText = "Reanudar";
+                        document.getElementById('main-container').style.opacity = "0.2";
+                        document.getElementById('main-container').style.pointerEvents = "none";
+                    } else {
+                        btnPause.innerText = "Pausar";
+                        document.getElementById('main-container').style.opacity = "1";
+                        document.getElementById('main-container').style.pointerEvents = "auto";
+                        startTimer();
+                    }
+                    updateHeader();
+                    renderQuiz();
+                }
+            } else {
+                renderQuiz();
+            }
+        }
+
+        function saveState() { localStorage.setItem(CACHE_KEY, JSON.stringify(state)); }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!state.isPaused && !state.isFinished) {
+                    state.timeRemaining--;
+                    updateHeader();
+                    saveState();
+                    if (state.timeRemaining <= 0) { finishTest(); }
+                }
+            }, 1000);
+        }
+
+        function togglePause() {
+            state.isPaused = !state.isPaused;
+            const btn = document.getElementById('btn-pause');
+            if (state.isPaused) {
+                btn.innerText = "Reanudar";
+                document.getElementById('main-container').style.opacity = "0.2";
+                document.getElementById('main-container').style.pointerEvents = "none";
+                clearInterval(timerInterval);
+            } else {
+                btn.innerText = "Pausar";
+                document.getElementById('main-container').style.opacity = "1";
+                document.getElementById('main-container').style.pointerEvents = "auto";
+                startTimer();
+            }
+            saveState();
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function startTest() {
+            document.getElementById('modal-start').classList.add('hidden');
+            document.getElementById('header').classList.remove('hidden');
+            document.getElementById('main-container').classList.remove('hidden');
+            startTimer();
+            updateHeader();
+        }
+
+        function renderQuiz(reviewMode = false) {
+            const container = document.getElementById('main-container');
+            container.innerHTML = '';
+            let questionsToRender = [...questionsData];
+
+            if (reviewMode) {
+                questionsToRender.sort((a, b) => {
+                    const ansA = state.answers[a.id];
+                    const ansB = state.answers[b.id];
+                    const isCorrectA = ansA !== undefined && ansA === a.correctIndex;
+                    const isCorrectB = ansB !== undefined && ansB === b.correctIndex;
+                    return (isCorrectA === isCorrectB) ? 0 : isCorrectA ? 1 : -1;
+                });
+            }
+
+            questionsToRender.forEach((q) => {
+                const isAnswered = state.answers[q.id] !== undefined;
+                const selectedOption = state.answers[q.id];
+                const isBlank = selectedOption === (q.options.length - 1) && q.options[q.options.length - 1].includes("Dejar en blanco"); 
+                // Handles case where "Dejar en blanco" is option 4, but for Q14 it's option 4 and Correct is option 5
+                
+                const isRealBlank = selectedOption !== undefined && q.options[selectedOption].includes("Dejar en blanco");
+                const isCorrect = selectedOption === q.correctIndex;
+
+                let html = `<div class="question-card" id="q-${q.id}">
+                                <div class="question-title">${q.text}</div>`;
+                
+                q.options.forEach((opt, optIndex) => {
+                    let classes = "option";
+                    if (isAnswered) {
+                        classes += " disabled";
+                        if (optIndex === q.correctIndex) classes += " correct";
+                        if (optIndex === selectedOption && !isCorrect && !isRealBlank) classes += " wrong";
+                        if (optIndex === selectedOption && isRealBlank) classes += " blank";
+                    }
+                    html += `<div class="${classes}" ${!isAnswered ? `onclick="selectOption(${q.id}, ${optIndex})"` : ''}>${opt}</div>`;
+                });
+
+                if (isAnswered) {
+                    let feedbackClass = isCorrect ? "feedback-correct" : "feedback-wrong";
+                    let feedbackText = isCorrect ? "¡Respuesta correcta!" : (isRealBlank ? "Dejada en blanco." : "Respuesta incorrecta.");
+                    if (!isCorrect) { feedbackText += `<br>La respuesta correcta es: <strong>${q.options[q.correctIndex]}</strong>`; }
+                    html += `<div class="feedback show ${feedbackClass}">${feedbackText}</div>`;
+                }
+                html += `</div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        function selectOption(questionId, optionIndex) {
+            if (state.isFinished || state.answers[questionId] !== undefined) return;
+            state.answers[questionId] = optionIndex;
+            if (questionId > state.highestQuestionAnswered) { state.highestQuestionAnswered = questionId; }
+            saveState();
+            updateHeader();
+            renderQuiz();
+            if (Object.keys(state.answers).length === questionsData.length) { setTimeout(finishTest, 1000); }
+        }
+
+        function updateHeader() {
+            let correct = 0, wrong = 0, blank = 0;
+            const total = questionsData.length;
+            const answeredCount = Object.keys(state.answers).length;
+
+            for (const qId in state.answers) {
+                const q = questionsData.find(x => x.id == qId);
+                const ans = state.answers[qId];
+                
+                if (q.options[ans].includes("Dejar en blanco")) { 
+                    blank++; 
+                } 
+                else if (ans === q.correctIndex) { 
+                    correct++; 
+                } 
+                else { 
+                    wrong++; 
+                }
+            }
+
+            const pending = total - answeredCount;
+            let score = 0;
+            if (state.highestQuestionAnswered > 0) {
+                // Penalización específica de PI (1/4 de punto)
+                score = ((correct - (wrong / 4)) / state.highestQuestionAnswered) * 100;
+            }
+            score = Math.max(0, score);
+
+            const notaColor = score >= 30 ? '#2ecc71' : '#e74c3c'; 
+            const timerColor = state.timeRemaining < 300 ? '#e74c3c' : '#f39c12';
+
+            document.getElementById('stat-correct').innerHTML = `Acertadas: <span style="color: #2ecc71;">${correct}</span>`;
+            document.getElementById('stat-wrong').innerHTML = `Falladas: <span style="color: #e74c3c;">${wrong}</span>`;
+            document.getElementById('stat-blank').innerText = `En blanco: ${blank}`;
+            document.getElementById('stat-score').innerHTML = `Nota: <span style="color: ${notaColor};">${score.toFixed(2)}</span>`;
+            document.getElementById('stat-pending').innerText = `Pendientes: ${pending}`;
+            document.getElementById('stat-timer').innerHTML = `<span style="color: ${timerColor};">⏱</span> ${formatTime(state.timeRemaining)}`;
+
+            return { correct, wrong, blank, score };
+        }
+
+        function finishTest() {
+            state.isFinished = true;
+            clearInterval(timerInterval);
+            questionsData.forEach(q => {
+                if (state.answers[q.id] === undefined) {
+                    // Buscar la opción que sea "Dejar en blanco"
+                    const blankIndex = q.options.findIndex(opt => opt.includes("Dejar en blanco"));
+                    state.answers[q.id] = blankIndex;
+                    if (q.id > state.highestQuestionAnswered) { state.highestQuestionAnswered = q.id; }
+                }
+            });
+            saveState();
+            showFinalModal();
+        }
+
+        function showFinalModal() {
+            const stats = updateHeader();
+            localStorage.setItem('score_test-a2-pi-2019', stats.score.toFixed(2));
+            const modal = document.getElementById('modal-end');
+            const statusEl = document.getElementById('final-status');
+            const scoreEl = document.getElementById('final-score');
+            
+            modal.classList.remove('hidden');
+            if (stats.score >= 30) {
+                statusEl.innerText = "¡APROBADO!";
+                statusEl.style.color = "#27ae60";
+            } else {
+                statusEl.innerText = "SUSPENSO";
+                statusEl.style.color = "#c0392b";
+            }
+            scoreEl.innerText = stats.score.toFixed(2);
+            document.getElementById('final-stats').innerHTML = `Acertadas: ${stats.correct} | Falladas: ${stats.wrong} | En blanco: ${stats.blank}`;
+        }
+
+        function resetTest() {
+            if (confirm("¿Seguro que quieres reiniciar? Se perderá todo el progreso.")) {
+                localStorage.removeItem(CACHE_KEY);
+                localStorage.removeItem('score_test-a2-pi-2019');
+                state = {
+                    answers: {}, 
+                    timeRemaining: questionsData.length * 54,
+                    isFinished: false,
+                    isPaused: false,
+                    highestQuestionAnswered: 0
+                };
+                if (timerInterval) clearInterval(timerInterval);
+                document.getElementById('modal-end').classList.add('hidden');
+                document.getElementById('header').classList.add('hidden');
+                document.getElementById('main-container').classList.add('hidden');
+                document.getElementById('modal-start').classList.remove('hidden');
+                document.getElementById('btn-pause').innerText = "Pausar";
+                document.getElementById('main-container').style.opacity = "1";
+                document.getElementById('main-container').style.pointerEvents = "auto";
+                document.getElementById('btn-pause').style.display = 'inline-block';
+                document.getElementById('btn-finish').style.display = 'inline-block';
+                updateHeader();
+                renderQuiz();
+            }
+        }
+
+        function reviewAnswers() {
+            document.getElementById('modal-end').classList.add('hidden');
+            document.getElementById('header').classList.remove('hidden');
+            document.querySelector('.controls').style.display = 'grid'; 
+            document.getElementById('btn-pause').style.display = 'none';
+            document.getElementById('btn-finish').style.display = 'none';
+            renderQuiz(true);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
